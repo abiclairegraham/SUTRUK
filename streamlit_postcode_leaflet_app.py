@@ -85,7 +85,11 @@ full_table = gdf[[
     'cluster_population', 'cluster_households', 'cluster_max_distance_km'
 ]].sort_values(by=['cluster', 'Roads'])
 
-st.dataframe(full_table, use_container_width=True)
+with st.container():
+    st.markdown("<div style='width: 95%;'>", unsafe_allow_html=True)
+    st.dataframe(full_table, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # Download full table
 full_csv = full_table.to_csv(index=False)
