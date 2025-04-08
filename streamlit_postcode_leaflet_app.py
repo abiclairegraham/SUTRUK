@@ -3,6 +3,7 @@ import streamlit as st
 import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
+import pandas as pd
 
 @st.cache_data
 def load_data():
@@ -23,12 +24,42 @@ st.write(f"Population: {int(subset['cluster_population'].iloc[0]):,}")
 st.write(f"Households: {int(subset['cluster_households'].iloc[0]):,}")
 st.write(f"Max Distance Across Cluster: {subset['cluster_max_distance_km'].iloc[0]:.2f} km")
 
-m = folium.Map(location=[subset.geometry.centroid.y.mean(), subset.geometry.centroid.x.mean()], zoom_start=14)
+# Choropleth metric
+metric_of_interest = 'cluster_population'
 
-folium.GeoJson(
-    subset,
-    tooltip=folium.GeoJsonTooltip(fields=["Postcode", "Population", "Households"]),
-    style_function=lambda x: {"fillColor": "#3186cc", "color": "black", "weight": 1, "fillOpacity": 0.6}
+# Ensure clean formatting
+subset[metric_of_interest] = pd.to_numeric(subset[metric_of_interest], errors='coerce')
+subset['Postcode'] = subset['Postcode'].str.replace(" ", "").str.upper()
+
+# Calculate map center from centroids
+center = subset.to_crs(4326).geometry.centroid.unary_union.centroid
+map_center = [center.y, center.x]
+
+# Create the map
+m = folium.Map(location=map_center, zoom_start=14, tiles='cartodbpositron')
+
+# Add choropleth layer
+folium.Choropleth(
+    geo_data=subset,
+    name=f"{metric_of_interest} Heatmap",
+    data=subset,
+    columns=["Postcode", metric_of_interest],
+    key_on="feature.properties.Postcode",
+    fill_color='YlOrRd',
+    fill_opacity=0.7,
+    line_opacity=0.3,
+    nan_fill_opacity=0,
+    legend_name=metric_of_interest.replace('_', ' ').title()
 ).add_to(m)
 
-st_folium(m, width=700, height=500)
+# Add boundary outlines with tooltips
+folium.GeoJson(
+    subset,
+    name="Polygons",
+    tooltip=folium.GeoJsonTooltip(fields=["Postcode", metric_of_interest])
+).add_to(m)
+
+folium.LayerControl().add_to(m)
+
+# Show map
+st_folium(m, width=750, height=500)
