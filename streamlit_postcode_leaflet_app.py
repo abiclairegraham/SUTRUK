@@ -4,6 +4,7 @@ import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
 import pandas as pd
+from io import BytesIO
 
 @st.cache_data
 def load_data():
@@ -69,9 +70,23 @@ folium.GeoJson(
 
 folium.LayerControl().add_to(m)
 
-# Show map
+# --- Display map ---
 st.subheader("Map")
 st_folium(m, width=750, height=500)
+
+# --- Download map as HTML ---
+map_html = m.get_root().render()
+map_bytes = BytesIO()
+map_bytes.write(map_html.encode('utf-8'))
+map_bytes.seek(0)
+
+st.download_button(
+    label="Download Map as HTML",
+    data=map_bytes,
+    file_name=f"cluster_{selected}_map.html",
+    mime="text/html"
+)
+st.caption("Open downloaded map in your browser to print or screenshot.")
 
 # --- Per-cluster table + download ---
 if not show_all:
