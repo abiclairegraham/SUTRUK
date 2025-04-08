@@ -63,3 +63,16 @@ folium.LayerControl().add_to(m)
 
 # Show map
 st_folium(m, width=750, height=500)
+
+# --- NEW: Streets + Postcodes Table ---
+st.subheader("Streets and Postcodes in This Cluster")
+
+# Clean and sort table
+table_df = subset[["Roads", "Postcode"]].drop_duplicates().sort_values(by="Roads")
+
+# Display table
+st.dataframe(table_df, use_container_width=True)
+
+# Download button
+csv = table_df.to_csv(index=False)
+st.download_button("Download as CSV", csv, file_name=f"cluster_{selected}_streets.csv", mime="text/csv")
