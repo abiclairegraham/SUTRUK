@@ -14,31 +14,39 @@ gdf = load_data()
 
 st.title("Ely Leaflet Clusters Dashboard")
 
-cluster_ids = sorted(gdf["cluster"].unique())
-selected = st.selectbox("Choose a cluster:", cluster_ids)
+# --- Cluster selection with 'All Clusters' option ---
+cluster_ids = ["All Clusters"] + sorted(gdf["cluster"].unique())
+selected = st.selectbox("Choose a cluster (or show all):", cluster_ids)
 
-subset = gdf[gdf["cluster"] == selected]
+if selected == "All Clusters":
+    subset = gdf.copy()
+    show_all = True
+else:
+    subset = gdf[gdf["cluster"] == selected]
+    show_all = False
 
-st.subheader(f"Stats for Cluster {selected}")
-st.write(f"Population: {int(subset['cluster_population'].iloc[0]):,}")
-st.write(f"Households: {int(subset['cluster_households'].iloc[0]):,}")
-st.write(f"Max Distance Across Cluster: {subset['cluster_max_distance_km'].iloc[0]:.2f} km")
+# --- Stats for selected cluster ---
+if not show_all:
+    st.subheader(f"Stats for Cluster {selected}")
+    st.write(f"Population: {int(subset['cluster_population'].iloc[0]):,}")
+    st.write(f"Households: {int(subset['cluster_households'].iloc[0]):,}")
+    st.write(f"Max Distance Across Cluster: {subset['cluster_max_distance_km'].iloc[0]:.2f} km")
 
 # Choropleth metric
 metric_of_interest = 'cluster_population'
 
-# Ensure clean formatting
+# Clean data
 subset[metric_of_interest] = pd.to_numeric(subset[metric_of_interest], errors='coerce')
 subset['Postcode'] = subset['Postcode'].str.replace(" ", "").str.upper()
 
-# Calculate map center from centroids
+# Center map
 center = subset.to_crs(4326).geometry.centroid.unary_union.centroid
 map_center = [center.y, center.x]
 
-# Create the map
+# Create Folium map
 m = folium.Map(location=map_center, zoom_start=14, tiles='cartodbpositron')
 
-# Add choropleth layer
+# Choropleth
 folium.Choropleth(
     geo_data=subset,
     name=f"{metric_of_interest} Heatmap",
@@ -52,7 +60,7 @@ folium.Choropleth(
     legend_name=metric_of_interest.replace('_', ' ').title()
 ).add_to(m)
 
-# Add boundary outlines with tooltips
+# Outlines and tooltips
 folium.GeoJson(
     subset,
     name="Polygons",
@@ -62,22 +70,19 @@ folium.GeoJson(
 folium.LayerControl().add_to(m)
 
 # Show map
+st.subheader("Map")
 st_folium(m, width=750, height=500)
 
-# --- Per-Cluster Table ---
-st.subheader("Streets and Postcodes in This Cluster")
+# --- Per-cluster table + download ---
+if not show_all:
+    st.subheader("Streets and Postcodes in This Cluster")
+    table_df = subset[["Roads", "Postcode"]].drop_duplicates().sort_values(by="Roads")
+    st.dataframe(table_df, use_container_width=True)
 
-# Clean and sort table
-table_df = subset[["Roads", "Postcode"]].drop_duplicates().sort_values(by="Roads")
+    csv = table_df.to_csv(index=False)
+    st.download_button("Download this cluster's streets as CSV", csv, file_name=f"cluster_{selected}_streets.csv", mime="text/csv")
 
-# Display table
-st.dataframe(table_df, use_container_width=True)
-
-# Download button for selected cluster
-csv = table_df.to_csv(index=False)
-st.download_button("Download this cluster's streets as CSV", csv, file_name=f"cluster_{selected}_streets.csv", mime="text/csv")
-
-# --- NEW: Full Data Table ---
+# --- Full overview table ---
 st.subheader("All Clusters Overview")
 
 full_table = gdf[[
@@ -85,12 +90,12 @@ full_table = gdf[[
     'cluster_population', 'cluster_households', 'cluster_max_distance_km'
 ]].sort_values(by=['cluster', 'Roads'])
 
+# Make the table extra wide using a container
 with st.container():
     st.markdown("<div style='width: 95%;'>", unsafe_allow_html=True)
     st.dataframe(full_table, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-
-# Download full table
+# Full download
 full_csv = full_table.to_csv(index=False)
 st.download_button("Download all cluster data as CSV", full_csv, file_name="all_clusters_overview.csv", mime="text/csv")
