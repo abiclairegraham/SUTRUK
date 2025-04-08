@@ -64,7 +64,7 @@ folium.LayerControl().add_to(m)
 # Show map
 st_folium(m, width=750, height=500)
 
-# --- NEW: Streets + Postcodes Table ---
+# --- Per-Cluster Table ---
 st.subheader("Streets and Postcodes in This Cluster")
 
 # Clean and sort table
@@ -73,6 +73,20 @@ table_df = subset[["Roads", "Postcode"]].drop_duplicates().sort_values(by="Roads
 # Display table
 st.dataframe(table_df, use_container_width=True)
 
-# Download button
+# Download button for selected cluster
 csv = table_df.to_csv(index=False)
-st.download_button("Download as CSV", csv, file_name=f"cluster_{selected}_streets.csv", mime="text/csv")
+st.download_button("Download this cluster's streets as CSV", csv, file_name=f"cluster_{selected}_streets.csv", mime="text/csv")
+
+# --- NEW: Full Data Table ---
+st.subheader("All Clusters Overview")
+
+full_table = gdf[[
+    'Roads', 'Postcode', 'Population', 'Households', 'cluster',
+    'cluster_population', 'cluster_households', 'cluster_max_distance_km'
+]].sort_values(by=['cluster', 'Roads'])
+
+st.dataframe(full_table, use_container_width=True)
+
+# Download full table
+full_csv = full_table.to_csv(index=False)
+st.download_button("Download all cluster data as CSV", full_csv, file_name="all_clusters_overview.csv", mime="text/csv")
