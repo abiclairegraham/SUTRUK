@@ -3,7 +3,6 @@
 import streamlit as st
 import geopandas as gpd
 import folium
-from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import pandas as pd
 from io import BytesIO
@@ -18,10 +17,14 @@ def load_data():
 gdf = load_data()
 
 st.title("📍 Build Your Own Cluster - Interactive Map")
-st.markdown("Use the heatmap to target high-population areas. Click postcode polygons to select them.")
+st.markdown("Use the population shading to target high-population areas. Click postcode polygons to select them.")
 
 # Convert to WGS84 for Folium
 gdf = gdf.to_crs(epsg=4326)
+
+# Ensure Population is numeric and clean
+gdf["Population"] = pd.to_numeric(gdf["Population"], errors="coerce")
+gdf["Postcode"] = gdf["Postcode"].str.replace(" ", "").str.upper()
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
@@ -30,13 +33,19 @@ if "selected_postcodes" not in st.session_state:
 # --- Map Setup ---
 m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
 
-# --- Add HeatMap layer ---
-heat_df = gdf[["Population", "geometry"]].copy()
-heat_df = heat_df[heat_df["Population"].notnull() & heat_df.geometry.notnull()]
-heat_df["lat"] = heat_df.geometry.centroid.y
-heat_df["lon"] = heat_df.geometry.centroid.x
-heat_data = heat_df[["lat", "lon", "Population"]].values.tolist()
-HeatMap(heat_data, radius=20, blur=10, max_zoom=14).add_to(m)
+# Add Choropleth layer for population
+folium.Choropleth(
+    geo_data=gdf,
+    name="Population Heatmap",
+    data=gdf,
+    columns=["Postcode", "Population"],
+    key_on="feature.properties.Postcode",
+    fill_color="YlOrRd",
+    fill_opacity=0.7,
+    line_opacity=0.5,
+    nan_fill_opacity=0,
+    legend_name="Population"
+).add_to(m)
 
 # Add GeoJson layer with clickable polygons
 def style_function(feature):
@@ -44,7 +53,7 @@ def style_function(feature):
     if postcode in st.session_state.selected_postcodes:
         return {"fillColor": "#ff6e40", "color": "#ff3d00", "weight": 2, "fillOpacity": 0.7}
     else:
-        return {"fillColor": "#2288bb", "color": "black", "weight": 1, "fillOpacity": 0.3}
+        return {"fillColor": "transparent", "color": "black", "weight": 1, "fillOpacity": 0.0}
 
 folium.GeoJson(
     gdf,
