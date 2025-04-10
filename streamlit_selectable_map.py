@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 
 @st.cache_data
 def load_data():
-    gdf = gpd.read_file("Ely_North_all_postcodes.geojson")
+    gdf = gpd.read_file("All_Fenland_wards_all_postcodes.geojson")
     return gdf
 
 gdf = load_data()
@@ -19,12 +19,18 @@ gdf = load_data()
 st.title("📍 Build Your Own Cluster - Interactive Map")
 st.markdown("Use the population shading to target high-population areas. Click postcode polygons to select them.")
 
-# Convert to WGS84 for Folium
-gdf = gdf.to_crs(epsg=4326)
-
 # Ensure Population is numeric and clean
 gdf["Population"] = pd.to_numeric(gdf["Population"], errors="coerce")
 gdf["Postcode"] = gdf["Postcode"].str.replace(" ", "").str.upper()
+
+# --- Dropdown to select County Electoral Division ---
+if "County Electoral Division" in gdf.columns:
+    divisions = sorted(gdf["County Electoral Division"].dropna().unique())
+    selected_division = st.selectbox("Choose County Electoral Division:", divisions)
+    gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
+
+# Convert to WGS84 for Folium
+gdf = gdf.to_crs(epsg=4326)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
@@ -41,7 +47,7 @@ folium.Choropleth(
     columns=["Postcode", "Population"],
     key_on="feature.properties.Postcode",
     fill_color="YlOrRd",
-    fill_opacity=0.35,  # Reduced opacity for better street visibility
+    fill_opacity=0.35,
     line_opacity=0.3,
     nan_fill_opacity=0,
     legend_name="Population"
@@ -51,7 +57,7 @@ folium.Choropleth(
 def style_function(feature):
     postcode = feature['properties']['Postcode']
     if postcode in st.session_state.selected_postcodes:
-        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 3, "fillOpacity": 0.2}  # Blue highlight
+        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 3, "fillOpacity": 0.2}
     else:
         return {"fillColor": "transparent", "color": "black", "weight": 1, "fillOpacity": 0.0}
 
@@ -60,7 +66,7 @@ folium.GeoJson(
     name="Postcodes",
     tooltip=folium.GeoJsonTooltip(fields=["Postcode", "Population", "Households"]),
     style_function=style_function,
-    highlight_function=lambda x: {"weight": 3, "color": "blue"}  # Blue hover highlight
+    highlight_function=lambda x: {"weight": 3, "color": "blue"}
 ).add_to(m)
 
 # Render map and collect user clicks
@@ -117,5 +123,6 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
+
 
 
