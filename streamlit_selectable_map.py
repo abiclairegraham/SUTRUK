@@ -21,6 +21,8 @@ st.markdown("Click postcode areas on the map to select them. Your custom cluster
 
 # Convert to WGS84 for Folium
 gdf = gdf.to_crs(epsg=4326)
+st.write(gdf.head())
+st.write(gdf.crs)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
