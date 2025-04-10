@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 
 @st.cache_data
 def load_data():
-    gdf = gpd.read_file("Ely_North_all_postcodes.geojson")
+    gdf = gpd.read_file("Ely_postcode_clusters.geojson")
     return gdf
 
 gdf = load_data()
@@ -33,7 +33,7 @@ if "selected_postcodes" not in st.session_state:
 # --- Map Setup ---
 m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
 
-# Add Choropleth layer for population
+# Add Choropleth layer for population with reduced opacity
 folium.Choropleth(
     geo_data=gdf,
     name="Population Heatmap",
@@ -41,8 +41,8 @@ folium.Choropleth(
     columns=["Postcode", "Population"],
     key_on="feature.properties.Postcode",
     fill_color="YlOrRd",
-    fill_opacity=0.7,
-    line_opacity=0.5,
+    fill_opacity=0.35,  # Reduced opacity for better street visibility
+    line_opacity=0.3,
     nan_fill_opacity=0,
     legend_name="Population"
 ).add_to(m)
@@ -51,7 +51,7 @@ folium.Choropleth(
 def style_function(feature):
     postcode = feature['properties']['Postcode']
     if postcode in st.session_state.selected_postcodes:
-        return {"fillColor": "#ff6e40", "color": "#ff3d00", "weight": 2, "fillOpacity": 0.7}
+        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 2, "fillOpacity": 0.8}  # Blue highlight
     else:
         return {"fillColor": "transparent", "color": "black", "weight": 1, "fillOpacity": 0.0}
 
@@ -60,10 +60,25 @@ folium.GeoJson(
     name="Postcodes",
     tooltip=folium.GeoJsonTooltip(fields=["Postcode", "Population", "Households"]),
     style_function=style_function,
-    highlight_function=lambda x: {"weight": 3, "color": "red"}
+    highlight_function=lambda x: {"weight": 3, "color": "blue"}  # Blue hover highlight
 ).add_to(m)
 
+# Render map and collect user clicks
 st_data = st_folium(m, width=900, height=600)
+
+# --- Map download button ---
+map_html = m.get_root().render()
+map_bytes = BytesIO()
+map_bytes.write(map_html.encode('utf-8'))
+map_bytes.seek(0)
+
+st.download_button(
+    label="Download Map as HTML",
+    data=map_bytes,
+    file_name="custom_cluster_map.html",
+    mime="text/html"
+)
+st.caption("Open downloaded map in your browser to print or screenshot.")
 
 # --- Collect clicked postcodes ---
 clicked = st_data.get("last_clicked", {})
@@ -102,4 +117,5 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
+
 
