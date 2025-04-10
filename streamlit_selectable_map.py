@@ -51,7 +51,7 @@ folium.Choropleth(
 def style_function(feature):
     postcode = feature['properties']['Postcode']
     if postcode in st.session_state.selected_postcodes:
-        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 2, "fillOpacity": 0.8}  # Blue highlight
+        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 3, "fillOpacity": 0.2}  # Blue highlight
     else:
         return {"fillColor": "transparent", "color": "black", "weight": 1, "fillOpacity": 0.0}
 
