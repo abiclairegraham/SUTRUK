@@ -79,7 +79,9 @@ else:
     st.download_button("Download Selected Area as CSV", csv, file_name="custom_cluster.csv", mime="text/csv")
 
 # --- Clear selection ---
-if st.button("Clear Selection") and st.session_state.get("selected_postcodes"):
-    st.session_state.selected_postcodes.clear()
-    st.experimental_rerun()
+if st.button("Clear Selection"):
+    if "selected_postcodes" in st.session_state:
+        st.session_state.selected_postcodes.clear()
+    st.rerun()
+
 
