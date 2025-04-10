@@ -1,7 +1,9 @@
 
-import streamlit as st
+ 
+ import streamlit as st
 import geopandas as gpd
 import folium
+from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import pandas as pd
 from io import BytesIO
@@ -16,7 +18,7 @@ def load_data():
 gdf = load_data()
 
 st.title("📍 Build Your Own Cluster - Interactive Map")
-st.markdown("Click postcode areas on the map to select them. Your custom cluster will appear below.")
+st.markdown("Use the heatmap to target high-population areas. Click postcode polygons to select them.")
 
 # Convert to WGS84 for Folium
 gdf = gdf.to_crs(epsg=4326)
@@ -27,6 +29,14 @@ if "selected_postcodes" not in st.session_state:
 
 # --- Map Setup ---
 m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
+
+# --- Add HeatMap layer ---
+heat_df = gdf[["Population", "geometry"]].copy()
+heat_df = heat_df[heat_df["Population"].notnull() & heat_df.geometry.notnull()]
+heat_df["lat"] = heat_df.geometry.centroid.y
+heat_df["lon"] = heat_df.geometry.centroid.x
+heat_data = heat_df[["lat", "lon", "Population"]].values.tolist()
+HeatMap(heat_data, radius=20, blur=10, max_zoom=14).add_to(m)
 
 # Add GeoJson layer with clickable polygons
 def style_function(feature):
@@ -83,5 +93,4 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
-
 
