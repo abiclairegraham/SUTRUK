@@ -63,7 +63,7 @@ folium.GeoJson(
     tooltip=folium.GeoJsonTooltip(fields=["Postcode", "Population", "Households"]),
     style_function=style_function,
     highlight_function=lambda x: {"weight": 3, "color": "red"},
-    on_each_feature=click_js
+    # on_each_feature=click_js
 ).add_to(m)
 
 st_data = st_folium(m, width=900, height=600)
