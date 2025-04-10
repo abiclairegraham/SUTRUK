@@ -9,7 +9,6 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 @st.cache_data
-
 def load_data():
     gdf = gpd.read_file("Ely_postcode_clusters.geojson")
     return gdf
@@ -21,8 +20,6 @@ st.markdown("Click postcode areas on the map to select them. Your custom cluster
 
 # Convert to WGS84 for Folium
 gdf = gdf.to_crs(epsg=4326)
-st.write(gdf.head())
-st.write(gdf.crs)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
@@ -39,45 +36,31 @@ def style_function(feature):
     else:
         return {"fillColor": "#2288bb", "color": "black", "weight": 1, "fillOpacity": 0.3}
 
-# JavaScript to handle click events
-click_js = """
-function(feature, layer) {
-    layer.on('click', function (e) {
-        let selected = window.selected_postcodes || [];
-        const pc = feature.properties.Postcode;
-        const index = selected.indexOf(pc);
-        if (index === -1) {
-            selected.push(pc);
-        } else {
-            selected.splice(index, 1);
-        }
-        window.selected_postcodes = selected;
-        layer.setStyle({fillColor: '#ff6e40', color: '#ff3d00', weight: 2, fillOpacity: 0.7});
-    });
-}
-"""
-
 folium.GeoJson(
     gdf,
     name="Postcodes",
     tooltip=folium.GeoJsonTooltip(fields=["Postcode", "Population", "Households"]),
     style_function=style_function,
-    highlight_function=lambda x: {"weight": 3, "color": "red"},
-    # on_each_feature=click_js
+    highlight_function=lambda x: {"weight": 3, "color": "red"}
 ).add_to(m)
 
 st_data = st_folium(m, width=900, height=600)
 
 # --- Collect clicked postcodes ---
-clicked = st_data.get("last_active_drawing", {})
+clicked = st_data.get("last_clicked", {})
 
-if clicked and "properties" in clicked:
-    clicked_pc = clicked["properties"].get("Postcode")
-    if clicked_pc:
-        if clicked_pc in st.session_state.selected_postcodes:
-            st.session_state.selected_postcodes.remove(clicked_pc)
-        else:
-            st.session_state.selected_postcodes.add(clicked_pc)
+if clicked:
+    click_lat = clicked.get("lat")
+    click_lng = clicked.get("lng")
+    if click_lat and click_lng:
+        point = gpd.GeoSeries([gpd.points_from_xy([click_lng], [click_lat])[0]], crs="EPSG:4326")
+        matches = gdf[gdf.geometry.contains(point[0])]
+        if not matches.empty:
+            clicked_pc = matches.iloc[0]["Postcode"]
+            if clicked_pc in st.session_state.selected_postcodes:
+                st.session_state.selected_postcodes.remove(clicked_pc)
+            else:
+                st.session_state.selected_postcodes.add(clicked_pc)
 
 # --- Show selected postcodes + stats ---
 st.subheader("Your Selected Postcodes")
@@ -96,7 +79,7 @@ else:
     st.download_button("Download Selected Area as CSV", csv, file_name="custom_cluster.csv", mime="text/csv")
 
 # --- Clear selection ---
-if st.button("Clear Selection"):
+if st.button("Clear Selection") and st.session_state.get("selected_postcodes"):
     st.session_state.selected_postcodes.clear()
     st.experimental_rerun()
 
