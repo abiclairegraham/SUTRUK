@@ -1,6 +1,6 @@
 
 
-import streamlit as st
+ import streamlit as st
 import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
@@ -31,6 +31,10 @@ if "County Electoral Division" in gdf_full.columns:
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
     gdf = gdf_full[gdf_full["County Electoral Division"] == selected_division].copy()
 
+# Simplify geometry to improve performance
+simplify_tol = st.slider("Geometry simplification tolerance:", 0.0, 20.0, 5.0, 0.5)
+gdf["geometry"] = gdf["geometry"].simplify(tolerance=simplify_tol, preserve_topology=True)
+
 # Convert to WGS84 for Folium (after filtering)
 gdf = gdf.to_crs(epsg=4326)
 
@@ -41,19 +45,20 @@ if "selected_postcodes" not in st.session_state:
 # --- Map Setup ---
 m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
 
-# Add Choropleth layer for population with reduced opacity
-folium.Choropleth(
-    geo_data=gdf,
-    name="Population Heatmap",
-    data=gdf,
-    columns=["Postcode", "Population"],
-    key_on="feature.properties.Postcode",
-    fill_color="YlOrRd",
-    fill_opacity=0.35,
-    line_opacity=0.3,
-    nan_fill_opacity=0,
-    legend_name="Population"
-).add_to(m)
+# Optional choropleth toggle
+if st.checkbox("Show population shading", value=True):
+    folium.Choropleth(
+        geo_data=gdf,
+        name="Population Heatmap",
+        data=gdf,
+        columns=["Postcode", "Population"],
+        key_on="feature.properties.Postcode",
+        fill_color="YlOrRd",
+        fill_opacity=0.35,
+        line_opacity=0.3,
+        nan_fill_opacity=0,
+        legend_name="Population"
+    ).add_to(m)
 
 # Add GeoJson layer with clickable polygons
 def style_function(feature):
@@ -103,6 +108,7 @@ if clicked:
                 st.session_state.selected_postcodes.remove(clicked_pc)
             else:
                 st.session_state.selected_postcodes.add(clicked_pc)
+            st.rerun()
 
 # --- Show selected postcodes + stats ---
 st.subheader("Your Selected Postcodes")
@@ -125,7 +131,5 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
-
-
 
 
