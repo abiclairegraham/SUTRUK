@@ -31,12 +31,16 @@ if "County Electoral Division" in gdf_full.columns:
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
     gdf = gdf_full[gdf_full["County Electoral Division"] == selected_division].copy()
 
-# Simplify geometry to improve performance
-simplify_tol = st.slider("Geometry simplification tolerance:", 0.0, 20.0, 5.0, 0.5)
-gdf["geometry"] = gdf["geometry"].simplify(tolerance=simplify_tol, preserve_topology=True)
-
 # Convert to WGS84 for Folium (after filtering)
 gdf = gdf.to_crs(epsg=4326)
+
+# Preserve original geometry to allow resimplification
+if "geometry_orig" not in gdf.columns:
+    gdf["geometry_orig"] = gdf["geometry"]
+
+# Simplify from the original geometry each time
+simplify_tol = st.slider("Geometry simplification tolerance:", 0.0, 20.0, 5.0, 0.5)
+gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=simplify_tol, preserve_topology=True)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
