@@ -29,17 +29,16 @@ if "County Electoral Division" in gdf.columns:
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
     gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
 
-# Convert to WGS84 for mapping
+# Convert to WGS84
 gdf = gdf.to_crs(epsg=4326)
 
-# --- Geometry simplification slider ---
-st.sidebar.markdown("### ⚙️ Map Display Options")
-simplify_tol = st.sidebar.slider("Geometry simplification tolerance:", 0.0, 10.0, 5.0, 0.5)
+# --- Manually Set Simplification Tolerance ---
+SIMPLIFY_TOLERANCE = 4.0  # 👈 Change this number if needed
 
-# Save original geometry and simplify from that each time
+# Preserve original geometry and simplify from that
 if "geometry_orig" not in gdf.columns:
     gdf["geometry_orig"] = gdf["geometry"]
-gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=simplify_tol, preserve_topology=True)
+gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=SIMPLIFY_TOLERANCE, preserve_topology=True)
 
 # Strict cleanup of geometries after simplification
 gdf = gdf[
@@ -50,7 +49,7 @@ gdf = gdf[
 ].reset_index(drop=True)
 
 # --- Toggle choropleth layer ---
-show_choropleth = st.sidebar.checkbox("Show Population Choropleth", value=True)
+show_choropleth = st.checkbox("Show Population Choropleth", value=True)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
@@ -148,4 +147,4 @@ if st.button("Clear Selection"):
     st.session_state.selected_postcodes.clear()
     st.rerun()
 
-
+ 
