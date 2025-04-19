@@ -35,7 +35,7 @@ if "County Electoral Division" in gdf.columns:
 gdf = gdf.to_crs(epsg=27700)
 
 # Simplify in meters (e.g. 10 = smooth, 50 = very smooth)
-SIMPLIFY_TOLERANCE = 10  # Try 5, 10, 20 for comparison
+SIMPLIFY_TOLERANCE = 15  # Try 5, 10, 20 for comparison
 gdf["geometry"] = gdf["geometry"].simplify(tolerance=SIMPLIFY_TOLERANCE, preserve_topology=True)
 
 # Reproject back to WGS84 for mapping
