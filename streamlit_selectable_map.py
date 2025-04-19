@@ -42,6 +42,9 @@ if "geometry_orig" not in gdf.columns:
 simplify_tol = st.slider("Geometry simplification tolerance:", 0.0, 20.0, 5.0, 0.5)
 gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=simplify_tol, preserve_topology=True)
 
+# Drop any invalid or null geometries to avoid Choropleth crash
+gdf = gdf[gdf["geometry"].is_valid & gdf["geometry"].notnull()].reset_index(drop=True)
+
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
     st.session_state.selected_postcodes = set()
@@ -135,5 +138,6 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
+
 
 
