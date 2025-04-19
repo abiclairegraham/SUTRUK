@@ -29,35 +29,60 @@ if "County Electoral Division" in gdf.columns:
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
     gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
 
-# Convert to WGS84 for Folium
+# Convert to WGS84 for mapping
 gdf = gdf.to_crs(epsg=4326)
+
+# --- Geometry simplification slider ---
+st.sidebar.markdown("### ⚙️ Map Display Options")
+simplify_tol = st.sidebar.slider("Geometry simplification tolerance:", 0.0, 10.0, 5.0, 0.5)
+
+# Save original geometry and simplify from that each time
+if "geometry_orig" not in gdf.columns:
+    gdf["geometry_orig"] = gdf["geometry"]
+gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=simplify_tol, preserve_topology=True)
+
+# Strict cleanup of geometries after simplification
+gdf = gdf[
+    gdf["geometry"].is_valid
+    & gdf["geometry"].notnull()
+    & ~gdf["geometry"].is_empty
+    & gdf["geometry"].geom_type.isin(["Polygon", "MultiPolygon"])
+].reset_index(drop=True)
+
+# --- Toggle choropleth layer ---
+show_choropleth = st.sidebar.checkbox("Show Population Choropleth", value=True)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
     st.session_state.selected_postcodes = set()
 
 # --- Map Setup ---
-m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
+m = folium.Map(
+    location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()],
+    zoom_start=14,
+    tiles="cartodbpositron"
+)
 
-# Add Choropleth layer for population with reduced opacity
-folium.Choropleth(
-    geo_data=gdf,
-    name="Population Heatmap",
-    data=gdf,
-    columns=["Postcode", "Population"],
-    key_on="feature.properties.Postcode",
-    fill_color="YlOrRd",
-    fill_opacity=0.35,
-    line_opacity=0.3,
-    nan_fill_opacity=0,
-    legend_name="Population"
-).add_to(m)
+# Add Choropleth layer if enabled
+if show_choropleth:
+    folium.Choropleth(
+        geo_data=gdf,
+        name="Population Heatmap",
+        data=gdf,
+        columns=["Postcode", "Population"],
+        key_on="feature.properties.Postcode",
+        fill_color="YlOrRd",
+        fill_opacity=0.35,
+        line_opacity=0.3,
+        nan_fill_opacity=0,
+        legend_name="Population"
+    ).add_to(m)
 
 # Add GeoJson layer with clickable polygons
 def style_function(feature):
     postcode = feature['properties']['Postcode']
     if postcode in st.session_state.selected_postcodes:
-        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 3, "fillOpacity": 0.2}
+        return {"fillColor": "#1f78b4", "color": "#0d47a1", "weight": 3, "fillOpacity": 0.4}
     else:
         return {"fillColor": "transparent", "color": "black", "weight": 1, "fillOpacity": 0.0}
 
@@ -86,9 +111,8 @@ st.download_button(
 )
 st.caption("Open downloaded map in your browser to print or screenshot.")
 
-# --- Collect clicked postcodes ---
+# --- Handle map clicks to toggle selection ---
 clicked = st_data.get("last_clicked", {})
-
 if clicked:
     click_lat = clicked.get("lat")
     click_lng = clicked.get("lng")
@@ -101,6 +125,7 @@ if clicked:
                 st.session_state.selected_postcodes.remove(clicked_pc)
             else:
                 st.session_state.selected_postcodes.add(clicked_pc)
+            st.rerun()
 
 # --- Show selected postcodes + stats ---
 st.subheader("Your Selected Postcodes")
@@ -120,8 +145,7 @@ else:
 
 # --- Clear selection ---
 if st.button("Clear Selection"):
-    if "selected_postcodes" in st.session_state:
-        st.session_state.selected_postcodes.clear()
+    st.session_state.selected_postcodes.clear()
     st.rerun()
 
 
