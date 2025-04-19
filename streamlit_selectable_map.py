@@ -13,7 +13,7 @@ st.set_page_config(layout="wide")
 @st.cache_data
 def load_data():
     #gdf = gpd.read_file("All_Fenland_wards_all_postcodes.geojson")
-    gdf = gdp.read_file("CB_PE_selected_wards_all_postcodes.geojson")
+    gdf = gpd.read_file("CB_PE_selected_wards_all_postcodes.geojson")
     gdf["Population"] = pd.to_numeric(gdf["Population"], errors="coerce")
     gdf["Postcode"] = gdf["Postcode"].str.replace(" ", "").str.upper()
     return gdf
