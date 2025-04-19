@@ -1,5 +1,5 @@
 
- 
+
 import streamlit as st
 import geopandas as gpd
 import folium
@@ -10,26 +10,28 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 @st.cache_data
+
 def load_data():
     gdf = gpd.read_file("All_Fenland_wards_all_postcodes.geojson")
     return gdf
 
-gdf = load_data()
+# Load full data
+gdf_full = load_data()
 
 st.title("📍 Build Your Own Cluster - Interactive Map")
 st.markdown("Use the population shading to target high-population areas. Click postcode polygons to select them.")
 
 # Ensure Population is numeric and clean
-gdf["Population"] = pd.to_numeric(gdf["Population"], errors="coerce")
-gdf["Postcode"] = gdf["Postcode"].str.replace(" ", "").str.upper()
+gdf_full["Population"] = pd.to_numeric(gdf_full["Population"], errors="coerce")
+gdf_full["Postcode"] = gdf_full["Postcode"].str.replace(" ", "").str.upper()
 
 # --- Dropdown to select County Electoral Division ---
-if "County Electoral Division" in gdf.columns:
-    divisions = sorted(gdf["County Electoral Division"].dropna().unique())
+if "County Electoral Division" in gdf_full.columns:
+    divisions = sorted(gdf_full["County Electoral Division"].dropna().unique())
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
-    gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
+    gdf = gdf_full[gdf_full["County Electoral Division"] == selected_division].copy()
 
-# Convert to WGS84 for Folium
+# Convert to WGS84 for Folium (after filtering)
 gdf = gdf.to_crs(epsg=4326)
 
 # --- Initialize session state for selected postcodes ---
@@ -123,6 +125,7 @@ if st.button("Clear Selection"):
     if "selected_postcodes" in st.session_state:
         st.session_state.selected_postcodes.clear()
     st.rerun()
+
 
 
 
