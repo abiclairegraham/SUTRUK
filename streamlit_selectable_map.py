@@ -31,9 +31,15 @@ if "County Electoral Division" in gdf.columns:
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
     gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
 
-# --- Simplify geometry manually here ---
-SIMPLIFY_TOLERANCE = 2.0  # ← You can tweak this value manually
+# Reproject to British National Grid (meters)
+gdf = gdf.to_crs(epsg=27700)
+
+# Simplify in meters (e.g. 10 = smooth, 50 = very smooth)
+SIMPLIFY_TOLERANCE = 10  # Try 5, 10, 20 for comparison
 gdf["geometry"] = gdf["geometry"].simplify(tolerance=SIMPLIFY_TOLERANCE, preserve_topology=True)
+
+# Reproject back to WGS84 for mapping
+gdf = gdf.to_crs(epsg=4326)
 
 # --- Clean invalid geometries ---
 gdf = gdf[
