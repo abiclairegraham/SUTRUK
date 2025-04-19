@@ -1,5 +1,5 @@
 
-
+ 
 import streamlit as st
 import geopandas as gpd
 import folium
@@ -10,40 +10,27 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 
 @st.cache_data
-
 def load_data():
     gdf = gpd.read_file("All_Fenland_wards_all_postcodes.geojson")
     return gdf
 
-# Load full data
-gdf_full = load_data()
+gdf = load_data()
 
 st.title("📍 Build Your Own Cluster - Interactive Map")
 st.markdown("Use the population shading to target high-population areas. Click postcode polygons to select them.")
 
 # Ensure Population is numeric and clean
-gdf_full["Population"] = pd.to_numeric(gdf_full["Population"], errors="coerce")
-gdf_full["Postcode"] = gdf_full["Postcode"].str.replace(" ", "").str.upper()
+gdf["Population"] = pd.to_numeric(gdf["Population"], errors="coerce")
+gdf["Postcode"] = gdf["Postcode"].str.replace(" ", "").str.upper()
 
 # --- Dropdown to select County Electoral Division ---
-if "County Electoral Division" in gdf_full.columns:
-    divisions = sorted(gdf_full["County Electoral Division"].dropna().unique())
+if "County Electoral Division" in gdf.columns:
+    divisions = sorted(gdf["County Electoral Division"].dropna().unique())
     selected_division = st.selectbox("Choose County Electoral Division:", divisions)
-    gdf = gdf_full[gdf_full["County Electoral Division"] == selected_division].copy()
+    gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
 
-# Convert to WGS84 for Folium (after filtering)
+# Convert to WGS84 for Folium
 gdf = gdf.to_crs(epsg=4326)
-
-# Preserve original geometry to allow resimplification
-if "geometry_orig" not in gdf.columns:
-    gdf["geometry_orig"] = gdf["geometry"]
-
-# Simplify from the original geometry each time
-simplify_tol = st.slider("Geometry simplification tolerance:", 0.0, 20.0, 5.0, 0.5)
-gdf["geometry"] = gdf["geometry_orig"].simplify(tolerance=simplify_tol, preserve_topology=True)
-
-# Drop any invalid or null geometries to avoid Choropleth crash
-gdf = gdf[gdf["geometry"].is_valid & gdf["geometry"].notnull()].reset_index(drop=True)
 
 # --- Initialize session state for selected postcodes ---
 if "selected_postcodes" not in st.session_state:
@@ -52,20 +39,19 @@ if "selected_postcodes" not in st.session_state:
 # --- Map Setup ---
 m = folium.Map(location=[gdf.geometry.centroid.y.mean(), gdf.geometry.centroid.x.mean()], zoom_start=14, tiles="cartodbpositron")
 
-# Optional choropleth toggle
-if st.checkbox("Show population shading", value=True):
-    folium.Choropleth(
-        geo_data=gdf,
-        name="Population Heatmap",
-        data=gdf,
-        columns=["Postcode", "Population"],
-        key_on="feature.properties.Postcode",
-        fill_color="YlOrRd",
-        fill_opacity=0.35,
-        line_opacity=0.3,
-        nan_fill_opacity=0,
-        legend_name="Population"
-    ).add_to(m)
+# Add Choropleth layer for population with reduced opacity
+folium.Choropleth(
+    geo_data=gdf,
+    name="Population Heatmap",
+    data=gdf,
+    columns=["Postcode", "Population"],
+    key_on="feature.properties.Postcode",
+    fill_color="YlOrRd",
+    fill_opacity=0.35,
+    line_opacity=0.3,
+    nan_fill_opacity=0,
+    legend_name="Population"
+).add_to(m)
 
 # Add GeoJson layer with clickable polygons
 def style_function(feature):
@@ -115,7 +101,6 @@ if clicked:
                 st.session_state.selected_postcodes.remove(clicked_pc)
             else:
                 st.session_state.selected_postcodes.add(clicked_pc)
-            st.rerun()
 
 # --- Show selected postcodes + stats ---
 st.subheader("Your Selected Postcodes")
