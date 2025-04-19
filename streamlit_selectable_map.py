@@ -32,8 +32,8 @@ if "County Electoral Division" in gdf.columns:
     gdf = gdf[gdf["County Electoral Division"] == selected_division].copy()
 
 # --- Simplify geometry manually here ---
-SIMPLIFY_TOLERANCE = 15.0  # ← You can tweak this value manually
-# gdf["geometry"] = gdf["geometry"].simplify(tolerance=SIMPLIFY_TOLERANCE, preserve_topology=True)
+SIMPLIFY_TOLERANCE = 2.0  # ← You can tweak this value manually
+gdf["geometry"] = gdf["geometry"].simplify(tolerance=SIMPLIFY_TOLERANCE, preserve_topology=True)
 
 # --- Clean invalid geometries ---
 gdf = gdf[
