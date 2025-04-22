@@ -20,7 +20,7 @@ It’s designed to:
 
 ---
 
-## 🧠 For Maintainers (Abby or others)
+## 🧠 For Maintainers (Abi or others)
 
 ### ✅ What’s in this folder
 
