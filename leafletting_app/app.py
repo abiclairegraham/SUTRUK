@@ -34,7 +34,7 @@ def load_data():
 @st.cache_data
 
 def load_polygons():
-    gdf = gpd.read_file("data/postcode_polygons.geojson")
+    gdf = gpd.read_file("data/CB_PE_postcodes_geometry_only.geojson")
     return gdf
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
