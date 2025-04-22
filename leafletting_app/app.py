@@ -42,7 +42,7 @@ def load_polygons():
 def filter_leafletted(gdf, data):
     #done_postcodes = data[data["Leafleted?"] == "Yes"]["Postcode"].unique()
     done_postcodes = data[data["Leafleted?"].isin(["✅", "❓"])]["Postcode"].unique()
-    return gdf[gdf["postcode"].isin(done_postcodes)]
+    return gdf[gdf["Postcode"].isin(done_postcodes)]
 
 # --- STREAMLIT UI ---
 st.title("📮 Leafletting Tracker")
@@ -60,7 +60,7 @@ with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
     for _, row in leafletted_gdf.iterrows():
         folium.GeoJson(
             row["geometry"].__geo_interface__,
-            tooltip=row.get("postcode", "Unknown"),
+            tooltip=row.get("Postcode", "Unknown"),
             style_function=lambda x: {"fillColor": "green", "color": "green", "weight": 1, "fillOpacity": 0.5},
         ).add_to(m)
 
