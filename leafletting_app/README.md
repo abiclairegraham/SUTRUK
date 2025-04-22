@@ -35,7 +35,7 @@ It’s designed to:
 
 To connect the app to your master spreadsheet:
 
-1. Create a Google Cloud project & service account  
+1. Create a Google Cloud project & service account (I've called it *SUTRUK-tracker-project*) 
 2. Enable **Google Sheets API**
 3. Download the service account key as JSON
 4. **Do not commit the JSON to GitHub**
