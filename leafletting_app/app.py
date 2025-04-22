@@ -35,9 +35,7 @@ def load_data():
 @st.cache_data
 
 def load_polygons():
-    st.write("Current working directory:", os.getcwd())
-    st.write("Does file exist?", os.path.exists("data/CB_PE_postcodes_geometry_only.geojson"))
-    gdf = gpd.read_file("data/CB_PE_postcodes_geometry_only.geojson")
+    gdf = gpd.read_file("leafletting_app/data/CB_PE_postcodes_geometry_only.geojson")
     return gdf
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
