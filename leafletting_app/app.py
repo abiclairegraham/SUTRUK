@@ -7,13 +7,19 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import geopandas as gpd
 from io import StringIO
+import json
 
 # --- CONFIG ---
 st.set_page_config(page_title="Leafletting Tracker", layout="wide")
 
 # --- GOOGLE SHEETS SETUP ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = ServiceAccountCredentials.from_json_keyfile_name(".streamlit/credentials.json", scope)
+# credentials = ServiceAccountCredentials.from_json_keyfile_name(".streamlit/credentials.json", scope)
+# Load credentials from Streamlit secrets
+creds_dict = json.loads(st.secrets["GOOGLE_SHEETS_CREDENTIALS"])
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+gc = gspread.authorize(credentials)
+
 gc = gspread.authorize(credentials)
 
 # Replace this with your actual Google Sheet name and worksheet name
