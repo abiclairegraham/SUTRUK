@@ -40,8 +40,8 @@ def load_polygons():
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    #done_postcodes = data[data["Leafletted?"] == "Yes"]["Postcode"].unique()
-    done_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])]["Postcode"].unique()
+    #done_postcodes = data[data["Leafleted?"] == "Yes"]["Postcode"].unique()
+    done_postcodes = data[data["Leafleted?"].isin(["✅", "❓"])]["Postcode"].unique()
     return gdf[gdf["postcode"].isin(done_postcodes)]
 
 # --- STREAMLIT UI ---
@@ -89,7 +89,7 @@ with st.form("leafletting_form"):
         matching_indices = data[(data["Postcode"] == postcode) & (data["Roads"] == street)].index
 
         for idx in matching_indices:
-            sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "Yes")  # +2 for header + 1-indexing
+            sheet.update_cell(idx + 2, data.columns.get_loc("Leafleted?") + 1, "✅")  # +2 for header + 1-indexing
             if comments:
                 sheet.update_cell(idx + 2, data.columns.get_loc("Comments") + 1, comments)
 
