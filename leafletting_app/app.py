@@ -40,7 +40,8 @@ def load_polygons():
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    done_postcodes = data[data["Leafletted?"] == "Yes"]["Postcode"].unique()
+    #done_postcodes = data[data["Leafletted?"] == "Yes"]["Postcode"].unique()
+    done_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])]["Postcode"].unique()
     return gdf[gdf["postcode"].isin(done_postcodes)]
 
 # --- STREAMLIT UI ---
