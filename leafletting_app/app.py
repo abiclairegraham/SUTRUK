@@ -37,7 +37,7 @@ def load_polygons():
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
+    marked_postcodes = data[data["Leafleted?"].isin(["✅", "❓"])] ["Postcode"].unique()
     return gdf[gdf["Postcode"].isin(marked_postcodes)]
 
 # --- RENDER MAP ---
@@ -51,7 +51,7 @@ def render_map(data):
 
         for _, row in leafletted_gdf.iterrows():
             postcode = row["Postcode"]
-            status = data[data["Postcode"] == postcode]["Leafletted?"].values[0]
+            status = data[data["Postcode"] == postcode]["Leafleted?"].values[0]
             fill_color = "green" if status == "✅" else "orange"
 
             folium.GeoJson(
@@ -109,7 +109,7 @@ with st.form("leafletting_form"):
         matching_indices = data[(data["Postcode"] == postcode) & (data["Roads"] == street)].index
 
         for idx in matching_indices:
-            sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
+            sheet.update_cell(idx + 2, data.columns.get_loc("Leafleted?") + 1, "✅")
             if comments:
                 sheet.update_cell(idx + 2, data.columns.get_loc("Comments") + 1, comments)
 
