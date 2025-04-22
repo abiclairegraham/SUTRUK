@@ -20,10 +20,10 @@ creds_dict = json.loads(st.secrets["GOOGLE_SHEETS_CREDENTIALS"])
 credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 gc = gspread.authorize(credentials)
 
-# Replace this with your actual Google Sheet name and worksheet name
-SPREADSHEET_NAME = "LeaflettingMasterSheet"
-WORKSHEET_NAME = "Sheet1"
-sheet = gc.open(SPREADSHEET_NAME).worksheet(WORKSHEET_NAME)
+# Replace this with your actual Google Sheet ID# and worksheet name
+SPREADSHEET_ID = "1_YxODw-hduZCLXE-vyaLBu5P0yKZjxQnWU6RCsvCvD0"  # <- from the URL
+WORKSHEET_NAME = "CB_PE_wards_street_CEDs_pc_simplified"
+sheet = gc.open_by_key(SPREADSHEET_ID).worksheet(WORKSHEET_NAME)
 
 # --- LOAD MASTER DATA ---
 def load_data():
