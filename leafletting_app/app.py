@@ -22,13 +22,13 @@ SHEET_CONFIG = {
     "Cambridgeshire": {
         "sheet_id": "1NoyMBvPgRx8_m4fJ7Mw6JrPo7R8pZMmOzbJ0fv3DFiU",
         "sheet_name": "cambs_wards_street_CEDs_pc_simplified",
-        "geojson_path": "data/cambs_pc_polygons.geojson",
+        "geojson_path": "leafletting_app/data/cambs_pc_polygons.geojson",
         "map_center": [52.2, 0.12]
     },
     "Hertfordshire": {
         "sheet_id": "1uIBFgGBVBozTM0mI4OriSlWdX3-r0HXbfqDwaUXMj9Q",
         "sheet_name": "herts_wards_street_CEDs_pc_simplified",
-        "geojson_path": "data/herts_pc_polygons.geojson",
+        "geojson_path": "leafletting_app/data/herts_pc_polygons.geojson",
         "map_center": [51.8, -0.2]
     }
 }
