@@ -110,7 +110,7 @@ with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
 
     with col1:
-        postcode = st.selectbox("Postcode", options=sorted(data["Postcode"].unique()))
+        built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].unique()))
 
     with col2:
         street = st.selectbox("Street", options=sorted(data["Roads"].dropna().unique()))
@@ -123,14 +123,14 @@ with st.form("leafletting_form"):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Update the row in Google Sheets
-        matching_indices = data[(data["Postcode"] == postcode) & (data["Roads"] == street)].index
+        matching_indices = data[(data["Built Up Area"] == built_up_area) & (data["Roads"] == street)].index
 
         for idx in matching_indices:
             sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
             if comments:
                 sheet.update_cell(idx + 2, data.columns.get_loc("Comments") + 1, comments)
 
-        st.success(f"Marked {street}, {postcode} as leafletted!")
+        st.success(f"Marked {street}, {built_up_area} as leafletted!")
 
         # 🔄 Refresh map
         data = load_data()
