@@ -49,10 +49,11 @@ def load_data():
 
 # --- LOAD POLYGON GEOJSON ---
 @st.cache_data(show_spinner=False)
-def load_polygons():
-    gdf = gpd.read_file(sheet_info["geojson_path"])
+def load_polygons(geojson_path):
+    gdf = gpd.read_file(geojson_path)
     gdf = gdf[~gdf["geometry"].isnull()]
     return gdf
+
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
@@ -65,7 +66,7 @@ def filter_leafletted(gdf, data):
 
 # --- RENDER MAP ---
 def render_map(data):
-    gdf = load_polygons()
+    gdf = load_polygons(sheet_info["geojson_path"])
     leafletted_gdf = filter_leafletted(gdf, data)
 
     with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
