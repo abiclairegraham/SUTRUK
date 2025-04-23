@@ -11,10 +11,10 @@ from io import StringIO
 import json
 
 # --- CONFIG ---
-st.set_page_config(page_title="Leafletting Tracker", layout="wide")
+st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
 
 # --- COUNTY SELECTION ---
-st.title("📮 Leafletting Tracker")
+st.title("📮 SUTRUK Leafletting Tracker")
 county = st.selectbox("Choose your county:", ["Cambridgeshire", "Hertfordshire"])
 
 # --- CONFIG LOOKUP ---
