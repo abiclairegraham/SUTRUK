@@ -22,7 +22,7 @@ SHEET_CONFIG = {
     "Cambridgeshire": {
         "sheet_id": "1NoyMBvPgRx8_m4fJ7Mw6JrPo7R8pZMmOzbJ0fv3DFiU",
         "sheet_name": "cambs_wards_street_CEDs_pc_simplified",
-        "geojson_path": "leafletting_app/data/cambs_pc_polygons.geojson",
+        "geojson_path": "ting_app/data/cambs_pc_polygons.geojson",
         "map_center": [52.2, 0.12]
     },
     "Hertfordshire": {
@@ -56,7 +56,7 @@ def load_polygons():
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafleted?"].isin(["✅", "❓"])] ["Postcode"].unique()
+    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
     return gdf[gdf["Postcode"].isin(marked_postcodes)]
 
 # --- RENDER MAP ---
@@ -126,7 +126,7 @@ with st.form("leafletting_form"):
         matching_indices = data[(data["Postcode"] == postcode) & (data["Roads"] == street)].index
 
         for idx in matching_indices:
-            sheet.update_cell(idx + 2, data.columns.get_loc("Leafleted?") + 1, "✅")
+            sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
             if comments:
                 sheet.update_cell(idx + 2, data.columns.get_loc("Comments") + 1, comments)
 
