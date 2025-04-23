@@ -109,12 +109,8 @@ st.subheader("✅ Report Leafletted Streets")
 with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
 
-    with col1:
-        built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].unique()))
-
-    with col2:
-        street = st.selectbox("Street", options=sorted(data["Roads"].dropna().unique()))
-
+    built_up_area = col1.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
+    street = col2.selectbox("Street", options=sorted(data["Roads"].dropna().unique()))
     comments = st.text_area("Comments (optional)")
 
     submitted = st.form_submit_button("Submit")
