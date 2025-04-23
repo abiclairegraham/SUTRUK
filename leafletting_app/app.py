@@ -129,8 +129,9 @@ with st.form("leafletting_form"):
         st.success(f"Marked {street}, {built_up_area} as leafletted!")
 
         # 🔄 Refresh map
-        data = load_data()
-        render_map(data)
+        # data = load_data()
+        # render_map(data)
+        pass  # Streamlit will rerun and refresh the map automatically
 
 # --- STATS SECTION ---
 st.subheader("📊 Leafletting Summary")
