@@ -54,7 +54,6 @@ def load_polygons(geojson_path):
     gdf = gdf[~gdf["geometry"].isnull()]
     return gdf
 
-
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
     marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
@@ -132,3 +131,17 @@ with st.form("leafletting_form"):
         # 🔄 Refresh map
         data = load_data()
         render_map(data)
+
+# --- STATS SECTION ---
+st.subheader("📊 Leafletting Summary")
+leafletted_rows = data[data["Leafletted?"].isin(["✅", "❓"])]
+
+if not leafletted_rows.empty:
+    summary = leafletted_rows.groupby(["Built Up Area", "Roads"], dropna=True)["Households"].sum().reset_index()
+    summary = summary.sort_values(by=["Built Up Area", "Roads"])
+    total_households = summary["Households"].sum()
+
+    st.markdown(f"**Total households leafletted:** {int(total_households):,}")
+    st.dataframe(summary, use_container_width=True)
+else:
+    st.info("No streets have been marked as leafletted yet.")
