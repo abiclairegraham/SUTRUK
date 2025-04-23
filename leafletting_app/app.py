@@ -58,10 +58,6 @@ def load_polygons(geojson_path):
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
     marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
-    # 🔍 DEBUG: Show only SG6 postcodes
-    st.write("✅ Leafletted SG6 postcodes in sheet:", [pc for pc in marked_postcodes if pc.startswith("SG6")])
-    st.write("📦 # postcodes available in GeoJSON:", len(gdf["Postcode"].unique()))
-    st.write("📦 GeoJSON head:", gdf.head())
     return gdf[gdf["Postcode"].isin(marked_postcodes)]
 
 # --- RENDER MAP ---
