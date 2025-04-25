@@ -45,6 +45,8 @@ sheet = gc.open_by_key(sheet_info["sheet_id"]).worksheet(sheet_info["sheet_name"
 # --- LOAD MASTER DATA ---
 def load_data():
     data = pd.DataFrame(sheet.get_all_records())
+    data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
+    data["Roads"] = data["Roads"].astype(str).str.strip()
     return data
 
 # --- LOAD POLYGON GEOJSON ---
@@ -111,11 +113,16 @@ with st.form("leafletting_form"):
 
     built_up_area = col1.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
     
-    # Filter streets based on selected Built Up Area
+    # Filter streets dynamically based on selected Built Up Area
     filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
-    street = col2.selectbox("Street", options=sorted(filtered_streets))
+
+    if len(filtered_streets) > 0:
+        street = col2.selectbox("Street", options=sorted(filtered_streets))
+    else:
+        street = col2.selectbox("Street", options=["No streets available for this Built Up Area"])
 
     comments = st.text_area("Comments (optional)")
+
     submitted = st.form_submit_button("Submit")
 
 
