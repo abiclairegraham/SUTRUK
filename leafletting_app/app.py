@@ -105,14 +105,15 @@ data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
 data["Roads"] = data["Roads"].astype(str).str.strip()
 render_map(data)
 
+# Data Entry Form
+st.header("✅ Report Leafletted Streets")
+st.subheader("1️⃣ Select Built Up Area first")
 # Select Built Up Area first (outside form)
 built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
 
+st.subheader("2️⃣ Now select Roads, add Comment and Submit")
 # Now filter streets based on selected Built Up Area
 filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
-
-# Data Entry Form
-st.subheader("✅ Report Leafletted Streets")
 
 with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
