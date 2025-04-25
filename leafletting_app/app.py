@@ -105,26 +105,24 @@ data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
 data["Roads"] = data["Roads"].astype(str).str.strip()
 render_map(data)
 
+# Select Built Up Area first (outside form)
+built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
+
+# Now filter streets based on selected Built Up Area
+filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
+
 # Data Entry Form
 st.subheader("✅ Report Leafletted Streets")
 
 with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
 
-    built_up_area = col1.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
-    
-    # Filter streets dynamically based on selected Built Up Area
-    filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
+    # Street selectbox depends on earlier Built Up Area selection
+    street = col1.selectbox("Street", options=sorted(filtered_streets) if len(filtered_streets) > 0 else ["No streets available"])
 
-    if len(filtered_streets) > 0:
-        street = col2.selectbox("Street", options=sorted(filtered_streets))
-    else:
-        street = col2.selectbox("Street", options=["No streets available for this Built Up Area"])
-
-    comments = st.text_area("Comments (optional)")
+    comments = col2.text_area("Comments (optional)")
 
     submitted = st.form_submit_button("Submit")
-
 
     if submitted:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
