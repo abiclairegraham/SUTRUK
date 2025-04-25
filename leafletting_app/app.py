@@ -45,8 +45,6 @@ sheet = gc.open_by_key(sheet_info["sheet_id"]).worksheet(sheet_info["sheet_name"
 # --- LOAD MASTER DATA ---
 def load_data():
     data = pd.DataFrame(sheet.get_all_records())
-    data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-    data["Roads"] = data["Roads"].astype(str).str.strip()
     return data
 
 # --- LOAD POLYGON GEOJSON ---
@@ -103,6 +101,8 @@ def render_map(data):
 
 # --- MAIN FLOW ---
 data = load_data()
+data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
+data["Roads"] = data["Roads"].astype(str).str.strip()
 render_map(data)
 
 # Data Entry Form
