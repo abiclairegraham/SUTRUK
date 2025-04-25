@@ -110,10 +110,14 @@ with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
 
     built_up_area = col1.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
-    street = col2.selectbox("Street", options=sorted(data["Roads"].dropna().unique()))
-    comments = st.text_area("Comments (optional)")
+    
+    # Filter streets based on selected Built Up Area
+    filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
+    street = col2.selectbox("Street", options=sorted(filtered_streets))
 
+    comments = st.text_area("Comments (optional)")
     submitted = st.form_submit_button("Submit")
+
 
     if submitted:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
