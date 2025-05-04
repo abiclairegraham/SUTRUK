@@ -14,7 +14,6 @@ st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
 if "batch" not in st.session_state:
     st.session_state.batch = []
 
-
 # --- COUNTY SELECTION ---
 st.title("📮 SUTRUK Leafletting Tracker")
 county = st.selectbox("1️⃣ Choose your county:", ["Cambridgeshire", "Hertfordshire"])
@@ -99,6 +98,8 @@ if st.button("📦 Find Postcodes Inside Area"):
 
         selected_in_poly = merged[merged.geometry.centroid.within(poly)]
 
+        st.session_state.selected_in_poly = selected_in_poly  # ✅ Store for later use
+
         st.success(f"Found {len(selected_in_poly)} postcode areas inside selected region!")
 
         with st.expander("📌 View Selected Area on Map", expanded=True):
@@ -123,45 +124,47 @@ if st.button("📦 Find Postcodes Inside Area"):
                 ).add_to(m)
 
             folium_static(m, width=900, height=600)
-
-        # ✅ Update sheet
-        if st.button("✅ Mark All These Postcodes as Leafletted"):
-            updated_rows = 0
-            for postcode in selected_in_poly["Postcode"].unique():
-                matches = area_data[area_data["Postcode"] == postcode].index
-                for idx in matches:
-                    try:
-                        sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
-                        updated_rows += 1
-                    except Exception as e:
-                        st.error(f"Error updating {postcode}: {e}")
-            if updated_rows > 0:
-                st.success(f"✅ Updated {updated_rows} rows in the Google Sheet!")
-            else:
-                st.warning("No matching postcodes found in sheet to update.")
     else:
         st.error("Please select 4 unique postcodes.")
 
-# --- Optional: You can still include your manual entry / stats / batch sections below ---
+# --- Show matching street preview and update button ---
+if "selected_in_poly" in st.session_state:
+    st.subheader("📝 Streets Inside Selected Polygon")
+    street_matches = area_data[
+        area_data["Postcode"].isin(st.session_state.selected_in_poly["Postcode"])
+    ][["Postcode", "Roads"]].dropna()
 
+    if not street_matches.empty:
+        st.dataframe(street_matches.head(10), use_container_width=True)
+    else:
+        st.info("No matching streets found for selected postcodes.")
 
+    if st.button("✅ Mark All These Postcodes as Leafletted"):
+        updated_rows = 0
+        for postcode in st.session_state.selected_in_poly["Postcode"].unique():
+            matches = area_data[area_data["Postcode"] == postcode].index
+            for idx in matches:
+                try:
+                    sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
+                    updated_rows += 1
+                except Exception as e:
+                    st.error(f"Error updating {postcode}: {e}")
+        if updated_rows > 0:
+            st.success(f"✅ Updated {updated_rows} rows in the Google Sheet!")
+            del st.session_state.selected_in_poly  # Reset to avoid duplicates
+        else:
+            st.warning("No matching postcodes found in sheet to update.")
 
 # --- Data Entry Form ---
 st.header("✅ Report Leafletted Streets")
-# st.subheader("1️⃣ Select Built Up Area first")
-
-# built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
-
 st.subheader("3️⃣ Now select Streets, add Comment and Add to Batch")
 
 filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
 
 with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
-
     street = col1.selectbox("Street", options=sorted(filtered_streets) if len(filtered_streets) > 0 else ["No streets available"])
     comments = col2.text_area("Comments (optional)")
-
     add_to_batch = st.form_submit_button("➕ Add to Batch")
 
     if add_to_batch:
@@ -194,7 +197,6 @@ if st.session_state.batch:
         data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
         data["Roads"] = data["Roads"].astype(str).str.strip()
         data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
-        render_map(data)
 
 # --- STATS SECTION ---
 st.subheader("📊 Leafletting Summary")
