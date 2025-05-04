@@ -70,20 +70,12 @@ def render_map(data):
 
         for _, row in leafletted_gdf.iterrows():
             postcode = row["Postcode"]
-            status_values = data[data["Postcode"] == postcode]["Leafletted?"].values
-            status = status_values[0] if len(status_values) > 0 else ""
+            status = data[data["Postcode"] == postcode]["Leafletted?"].values[0]
             fill_color = "green" if status == "✅" else "orange"
 
             folium.GeoJson(
                 row["geometry"].__geo_interface__,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=[],
-                    aliases=[],
-                    labels=False,
-                    sticky=False,
-                    style=("background-color: white; color: black; font-weight: bold;"),
-                    text=f"{postcode} ({status})"
-                ),
+                tooltip=f"{postcode} ({status})",
                 style_function=lambda x, color=fill_color: {
                     "fillColor": color,
                     "color": color,
