@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
+import os
 import folium
 from streamlit_folium import folium_static
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import geopandas as gpd
+from io import StringIO
 import json
 
 # --- CONFIG ---
@@ -54,7 +56,7 @@ def load_polygons(geojson_path):
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])]["Postcode"].unique()
+    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
     return gdf[gdf["Postcode"].isin(marked_postcodes)]
 
 # --- RENDER MAP ---
@@ -119,6 +121,7 @@ st.header("✅ Report Leafletted Streets")
 st.subheader("1️⃣ Select Built Up Area first")
 
 built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
+
 st.subheader("2️⃣ Now select Streets, add Comment and Add to Batch")
 
 filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
@@ -176,3 +179,4 @@ if not leafletted_rows.empty:
     st.dataframe(summary, use_container_width=True)
 else:
     st.info("No streets have been marked as leafletted yet.")
+
