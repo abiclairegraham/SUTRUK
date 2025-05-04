@@ -9,7 +9,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import geopandas as gpd
 from io import StringIO
 import json
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
+import numpy as np  # 🔹 NEW: used for polygon sorting
 
 # --- CONFIG ---
 st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
@@ -127,7 +128,16 @@ if st.button("📦 Find Postcodes Inside Area"):
     selected_geoms = gdf[gdf["Postcode"].isin(selected_corners)].geometry.centroid
 
     if len(selected_geoms) == 4:
-        poly = Polygon([(pt.x, pt.y) for pt in selected_geoms])
+        corner_coords = [(pt.x, pt.y) for pt in selected_geoms]
+        center_x = np.mean([pt[0] for pt in corner_coords])
+        center_y = np.mean([pt[1] for pt in corner_coords])
+        center = Point(center_x, center_y)
+
+        def angle_from_center(pt):
+            return np.arctan2(pt[1] - center_y, pt[0] - center_x)
+
+        corner_coords_sorted = sorted(corner_coords, key=angle_from_center)
+        poly = Polygon(corner_coords_sorted)
 
         selected_in_poly = gdf[gdf.geometry.centroid.within(poly)]
 
@@ -137,8 +147,9 @@ if st.button("📦 Find Postcodes Inside Area"):
             m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
             folium.TileLayer("cartodbpositron").add_to(m)
 
+            # Draw polygon
             folium.Polygon(
-                locations=[(pt.y, pt.x) for pt in selected_geoms] + [(selected_geoms.iloc[0].y, selected_geoms.iloc[0].x)],
+                locations=[(y, x) for x, y in corner_coords_sorted] + [(corner_coords_sorted[0][1], corner_coords_sorted[0][0])],
                 color="blue", fill=True, fill_opacity=0.1, weight=2
             ).add_to(m)
 
@@ -163,7 +174,6 @@ if st.button("📦 Find Postcodes Inside Area"):
                     sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
             st.success("Marked selected postcodes as leafletted!")
 
-            # Refresh map and data
             data = load_data()
             data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
             data["Roads"] = data["Roads"].astype(str).str.strip()
@@ -215,7 +225,6 @@ if st.session_state.batch:
         st.success("✅ All streets submitted!")
         st.session_state.batch = []
 
-        # Refresh map
         data = load_data()
         data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
         data["Roads"] = data["Roads"].astype(str).str.strip()
