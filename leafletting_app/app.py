@@ -62,6 +62,10 @@ built_up_areas = sorted(data["Built Up Area"].dropna().unique())
 built_up_area = st.selectbox("2️⃣ Now select your Built Up Area:", built_up_areas)
 area_data = data[data["Built Up Area"] == built_up_area].copy()
 
+# --- LOAD POLYGONS AND MERGE ---
+gdf = load_polygons(sheet_info["geojson_path"])
+gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
+merged = gdf.merge(area_data, on="Postcode", how="inner")
 
 # --- SHOW MAP OF LEAFLETTED AREAS IN THIS BUILT-UP AREA ---
 with st.expander("🗺️ Leafletted Areas in This Built Up Area", expanded=True):
@@ -96,12 +100,6 @@ with st.expander("🗺️ Leafletted Areas in This Built Up Area", expanded=True
 
     folium_static(m, width=900, height=600)
 
-
-
-# --- LOAD POLYGONS AND MERGE ---
-gdf = load_polygons(sheet_info["geojson_path"])
-gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
-merged = gdf.merge(area_data, on="Postcode", how="inner")
 
 # --- ZONE SELECTION BY POSTCODES ---
 st.header("📍 Select an Area by 4 Postcodes in this Built Up Area")
