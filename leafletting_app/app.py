@@ -63,49 +63,49 @@ def filter_leafletted(gdf, data):
 def render_map(data):
     gdf = load_polygons(sheet_info["geojson_path"])
 
-    # Ensure postcode format matches between datasets
+    # Standardize postcodes
     gdf["Postcode"] = gdf["Postcode"].astype(str).str.replace(" ", "").str.upper()
     data["Postcode"] = data["Postcode"].astype(str).str.replace(" ", "").str.upper()
 
-    # Build tooltip labels for ALL postcodes in the GeoDataFrame
-    gdf["tooltip_label"] = gdf["Postcode"].apply(
-        lambda pc: f"{pc} ({data[data['Postcode'] == pc]['Leafletted?'].values[0]})"
-        if not data[data["Postcode"] == pc].empty else f"{pc}"
+    # Merge leaflet status into gdf
+    merged = gdf.merge(
+        data[["Postcode", "Leafletted?"]],
+        on="Postcode",
+        how="left"
     )
 
-    # Determine fill color for all polygons
-    def get_fill_color(pc):
-        status = data[data["Postcode"] == pc]["Leafletted?"].values
-        if len(status) > 0:
-            return "green" if status[0] == "✅" else "orange" if status[0] == "❓" else "gray"
-        return "gray"
+    merged["tooltip_label"] = merged.apply(
+        lambda row: f"{row['Postcode']} ({row['Leafletted?']})" if pd.notna(row["Leafletted?"]) else row["Postcode"],
+        axis=1
+    )
 
     with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
         m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
         folium.TileLayer("cartodbpositron").add_to(m)
 
-        for _, row in gdf.iterrows():
+        for _, row in merged.iterrows():
             postcode = row["Postcode"]
-            fill_color = get_fill_color(postcode)
+            status = row.get("Leafletted?", "")
+            fill_color = (
+                "green" if status == "✅"
+                else "orange" if status == "❓"
+                else "gray"
+            )
 
-            folium.GeoJson(
-                row["geometry"].__geo_interface__,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["tooltip_label"],
-                    aliases=[""],
-                    labels=False,
-                    sticky=True,
-                    style=("background-color: white; color: black; font-weight: bold;")
-                ),
+            # Create GeoJson with embedded tooltip
+            gj = folium.GeoJson(
+                data=row["geometry"].__geo_interface__,
                 style_function=lambda x, color=fill_color: {
                     "fillColor": color,
                     "color": color,
                     "weight": 1,
                     "fillOpacity": 0.5,
                 },
-            ).add_to(m)
+                tooltip=folium.Tooltip(row["tooltip_label"])
+            )
+            gj.add_to(m)
 
-        # Custom legend
+        # Legend
         legend_html = '''
          <div style="position: fixed; 
                      bottom: 50px; left: 50px; width: 180px; height: 90px; 
@@ -118,7 +118,6 @@ def render_map(data):
          </div> 
         '''
         m.get_root().html.add_child(folium.Element(legend_html))
-
         folium_static(m, width=900, height=600)
  
 # --- MAIN FLOW ---
