@@ -49,7 +49,18 @@ def load_data():
 @st.cache_data(show_spinner=False)
 def load_polygons(geojson_path):
     gdf = gpd.read_file(geojson_path)
+
+    # --- Simplify in metric CRS ---
+    gdf = gdf.to_crs(epsg=27700)
     gdf["geometry"] = gdf["geometry"].simplify(tolerance=8, preserve_topology=True)
+    gdf = gdf[
+    gdf["geometry"].is_valid
+    & gdf["geometry"].notnull()
+    & ~gdf["geometry"].is_empty
+    & gdf["geometry"].geom_type.isin(["Polygon", "MultiPolygon"])
+    ].reset_index(drop=True)
+    gdf = gdf.to_crs(epsg=4326)
+ 
     gdf = gdf[~gdf["geometry"].isnull()]
     return gdf
 
