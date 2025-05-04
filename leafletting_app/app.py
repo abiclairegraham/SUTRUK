@@ -9,6 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import geopandas as gpd
 from io import StringIO
 import json
+from shapely.geometry import Polygon
 
 # --- CONFIG ---
 st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
@@ -56,7 +57,7 @@ def load_polygons(geojson_path):
 
 # --- FILTER POLYGONS BY LEAFLETTED ---
 def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
+    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])]["Postcode"].unique()
     return gdf[gdf["Postcode"].isin(marked_postcodes)]
 
 # --- RENDER MAP ---
@@ -107,6 +108,68 @@ data = load_data()
 data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
 data["Roads"] = data["Roads"].astype(str).str.strip()
 render_map(data)
+
+# --- ZONE SELECTION BY POSTCODES ---
+st.header("📍 Select an Area by 4 Postcodes")
+
+gdf = load_polygons(sheet_info["geojson_path"])
+all_postcodes = sorted(gdf["Postcode"].unique())
+
+col1, col2, col3, col4 = st.columns(4)
+corner1 = col1.selectbox("Corner 1", options=all_postcodes, key="corner1")
+corner2 = col2.selectbox("Corner 2", options=all_postcodes, key="corner2")
+corner3 = col3.selectbox("Corner 3", options=all_postcodes, key="corner3")
+corner4 = col4.selectbox("Corner 4", options=all_postcodes, key="corner4")
+
+selected_corners = [corner1, corner2, corner3, corner4]
+
+if st.button("📦 Find Postcodes Inside Area"):
+    selected_geoms = gdf[gdf["Postcode"].isin(selected_corners)].geometry.centroid
+
+    if len(selected_geoms) == 4:
+        poly = Polygon([(pt.x, pt.y) for pt in selected_geoms])
+
+        selected_in_poly = gdf[gdf.geometry.centroid.within(poly)]
+
+        st.success(f"Found {len(selected_in_poly)} postcode areas inside selected region!")
+
+        with st.expander("📌 View Selected Area on Map", expanded=True):
+            m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
+            folium.TileLayer("cartodbpositron").add_to(m)
+
+            folium.Polygon(
+                locations=[(pt.y, pt.x) for pt in selected_geoms] + [(selected_geoms.iloc[0].y, selected_geoms.iloc[0].x)],
+                color="blue", fill=True, fill_opacity=0.1, weight=2
+            ).add_to(m)
+
+            for _, row in selected_in_poly.iterrows():
+                folium.GeoJson(
+                    row["geometry"].__geo_interface__,
+                    tooltip=row["Postcode"],
+                    style_function=lambda x: {
+                        "fillColor": "blue",
+                        "color": "blue",
+                        "weight": 1,
+                        "fillOpacity": 0.4,
+                    },
+                ).add_to(m)
+
+            folium_static(m, width=900, height=600)
+
+        if st.button("✅ Mark All These Postcodes as Leafletted"):
+            for postcode in selected_in_poly["Postcode"].unique():
+                match_idxs = data[data["Postcode"] == postcode].index
+                for idx in match_idxs:
+                    sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
+            st.success("Marked selected postcodes as leafletted!")
+
+            # Refresh map and data
+            data = load_data()
+            data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
+            data["Roads"] = data["Roads"].astype(str).str.strip()
+            render_map(data)
+    else:
+        st.error("Please select 4 unique postcodes to define the area.")
 
 # --- Data Entry Form ---
 st.header("✅ Report Leafletted Streets")
@@ -171,4 +234,3 @@ if not leafletted_rows.empty:
     st.dataframe(summary, use_container_width=True)
 else:
     st.info("No streets have been marked as leafletted yet.")
-
