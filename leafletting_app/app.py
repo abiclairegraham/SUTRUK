@@ -68,46 +68,53 @@ return gdf\[gdf\["Postcode"].isin(marked\_postcodes)]
 
 # --- RENDER MAP ---
 
-def render\_map(data):
-gdf = load\_polygons(sheet\_info\["geojson\_path"])
-leafletted\_gdf = filter\_leafletted(gdf, data)
+ def render_map(data):
+    gdf = load_polygons(sheet_info["geojson_path"])
+    leafletted_gdf = filter_leafletted(gdf, data)
 
-```
-with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
-    m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
-    folium.TileLayer("cartodbpositron").add_to(m)
+    with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
+        m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
+        folium.TileLayer("cartodbpositron").add_to(m)
 
-    for _, row in leafletted_gdf.iterrows():
-        postcode = row["Postcode"]
-        status = data[data["Postcode"] == postcode]["Leafletted?"].values[0]
-        fill_color = "green" if status == "✅" else "orange"
+        for _, row in leafletted_gdf.iterrows():
+            postcode = row["Postcode"]
+            status_values = data[data["Postcode"] == postcode]["Leafletted?"].values
+            status = status_values[0] if len(status_values) > 0 else ""
+            fill_color = "green" if status == "✅" else "orange"
 
-        folium.GeoJson(
-            row["geometry"].__geo_interface__,
-            tooltip=f"{postcode} ({status})",
-            style_function=lambda x, color=fill_color: {
-                "fillColor": color,
-                "color": color,
-                "weight": 1,
-                "fillOpacity": 0.5,
-            },
-        ).add_to(m)
+            folium.GeoJson(
+                row["geometry"].__geo_interface__,
+                tooltip=folium.GeoJsonTooltip(
+                    fields=[],
+                    aliases=[],
+                    labels=False,
+                    sticky=False,
+                    style=("background-color: white; color: black; font-weight: bold;"),
+                    text=f"{postcode} ({status})"
+                ),
+                style_function=lambda x, color=fill_color: {
+                    "fillColor": color,
+                    "color": color,
+                    "weight": 1,
+                    "fillOpacity": 0.5,
+                },
+            ).add_to(m)
 
-    # Add a custom legend
-    legend_html = '''
-     <div style="position: fixed; 
-                 bottom: 50px; left: 50px; width: 180px; height: 90px; 
-                 border:2px solid grey; z-index:9999; font-size:14px;
-                 background-color:white; padding: 10px;">
-     <b>Legend</b><br>
-     <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
-     <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
-     </div> 
-    '''
-    m.get_root().html.add_child(folium.Element(legend_html))
+        # Add a custom legend
+        legend_html = '''
+         <div style="position: fixed; 
+                     bottom: 50px; left: 50px; width: 180px; height: 90px; 
+                     border:2px solid grey; z-index:9999; font-size:14px;
+                     background-color:white; padding: 10px;">
+         <b>Legend</b><br>
+         <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
+         <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
+         </div> 
+        '''
+        m.get_root().html.add_child(folium.Element(legend_html))
 
-    folium_static(m, width=900, height=600)
-```
+        folium_static(m, width=900, height=600)
+
 
 # --- MAIN FLOW ---
 
