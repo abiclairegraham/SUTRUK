@@ -1,13 +1,10 @@
 import streamlit as st
 import pandas as pd
-import os
 import folium
 from streamlit_folium import folium_static
-from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import geopandas as gpd
-from io import StringIO
 import json
 from shapely.geometry import Polygon, Point
 import numpy as np
@@ -17,7 +14,7 @@ st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
 
 # --- COUNTY SELECTION ---
 st.title("📮 SUTRUK Leafletting Tracker")
-county = st.selectbox("Choose your county:", ["Cambridgeshire", "Hertfordshire"])
+county = st.selectbox("1️⃣ Choose your county:", ["Cambridgeshire", "Hertfordshire"])
 
 # --- CONFIG LOOKUP ---
 SHEET_CONFIG = {
@@ -44,89 +41,46 @@ gc = gspread.authorize(credentials)
 sheet_info = SHEET_CONFIG[county]
 sheet = gc.open_by_key(sheet_info["sheet_id"]).worksheet(sheet_info["sheet_name"])
 
-# --- LOAD MASTER DATA ---
+# --- LOAD DATA ---
 def load_data():
-    data = pd.DataFrame(sheet.get_all_records())
-    return data
+    return pd.DataFrame(sheet.get_all_records())
 
-# --- LOAD POLYGON GEOJSON ---
 @st.cache_data(show_spinner=False)
 def load_polygons(geojson_path):
     gdf = gpd.read_file(geojson_path)
-    gdf = gdf[~gdf["geometry"].isnull()]
-    return gdf
+    return gdf[~gdf["geometry"].isnull()]
 
-# --- FILTER POLYGONS BY LEAFLETTED ---
-def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])]["Postcode"].unique()
-    return gdf[gdf["Postcode"].isin(marked_postcodes)]
-
-# --- RENDER MAP ---
-def render_map(data):
-    gdf = load_polygons(sheet_info["geojson_path"])
-    leafletted_gdf = filter_leafletted(gdf, data)
-
-    with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
-        m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
-        folium.TileLayer("cartodbpositron").add_to(m)
-
-        for _, row in leafletted_gdf.iterrows():
-            postcode = row["Postcode"]
-            status = data[data["Postcode"] == postcode]["Leafletted?"].values[0]
-            fill_color = "green" if status == "✅" else "orange"
-
-            folium.GeoJson(
-                row["geometry"].__geo_interface__,
-                tooltip=f"{postcode} ({status})",
-                style_function=lambda x, color=fill_color: {
-                    "fillColor": color,
-                    "color": color,
-                    "weight": 1,
-                    "fillOpacity": 0.5,
-                },
-            ).add_to(m)
-
-        legend_html = '''
-         <div style="position: fixed; 
-                     bottom: 50px; left: 50px; width: 180px; height: 90px; 
-                     border:2px solid grey; z-index:9999; font-size:14px;
-                     background-color:white; padding: 10px;">
-         <b>Legend</b><br>
-         <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
-         <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
-         </div> 
-        '''
-        m.get_root().html.add_child(folium.Element(legend_html))
-
-        folium_static(m, width=900, height=600)
-
-# --- MAIN FLOW ---
-if "batch" not in st.session_state:
-    st.session_state.batch = []
-
+# --- GET BUILT UP AREAS ---
 data = load_data()
 data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-data["Roads"] = data["Roads"].astype(str).str.strip()
 data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
-render_map(data)
+built_up_areas = sorted(data["Built Up Area"].dropna().unique())
 
-# --- ZONE SELECTION BY POSTCODES ---
-st.header("📍 Select an Area by 4 Postcodes")
+# --- BUILT UP AREA SELECTION ---
+built_up_area = st.selectbox("2️⃣ Now select your Built Up Area:", built_up_areas)
+area_data = data[data["Built Up Area"] == built_up_area].copy()
 
+# --- LOAD POLYGONS AND MERGE ---
 gdf = load_polygons(sheet_info["geojson_path"])
 gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
-all_postcodes = sorted(gdf["Postcode"].unique())
+
+merged = gdf.merge(area_data, on="Postcode", how="inner")
+
+# --- ZONE SELECTION BY POSTCODES ---
+st.header("📍 Select an Area by 4 Postcodes in this Built Up Area")
+
+postcodes_in_area = sorted(merged["Postcode"].unique())
 
 col1, col2, col3, col4 = st.columns(4)
-corner1 = col1.selectbox("Corner 1", options=all_postcodes, key="corner1")
-corner2 = col2.selectbox("Corner 2", options=all_postcodes, key="corner2")
-corner3 = col3.selectbox("Corner 3", options=all_postcodes, key="corner3")
-corner4 = col4.selectbox("Corner 4", options=all_postcodes, key="corner4")
+corner1 = col1.selectbox("Corner 1", options=postcodes_in_area, key="corner1")
+corner2 = col2.selectbox("Corner 2", options=postcodes_in_area, key="corner2")
+corner3 = col3.selectbox("Corner 3", options=postcodes_in_area, key="corner3")
+corner4 = col4.selectbox("Corner 4", options=postcodes_in_area, key="corner4")
 
 selected_corners = [corner1, corner2, corner3, corner4]
 
 if st.button("📦 Find Postcodes Inside Area"):
-    selected_geoms = gdf[gdf["Postcode"].isin(selected_corners)].geometry.centroid
+    selected_geoms = merged[merged["Postcode"].isin(selected_corners)].geometry.centroid
 
     if len(selected_geoms) == 4:
         corner_coords = [(pt.x, pt.y) for pt in selected_geoms]
@@ -140,7 +94,7 @@ if st.button("📦 Find Postcodes Inside Area"):
         corner_coords_sorted = sorted(corner_coords, key=angle_from_center)
         poly = Polygon(corner_coords_sorted)
 
-        selected_in_poly = gdf[gdf.geometry.centroid.within(poly)]
+        selected_in_poly = merged[merged.geometry.centroid.within(poly)]
 
         st.success(f"Found {len(selected_in_poly)} postcode areas inside selected region!")
 
@@ -167,41 +121,35 @@ if st.button("📦 Find Postcodes Inside Area"):
 
             folium_static(m, width=900, height=600)
 
-        # ✅ Mark these postcodes as leafletted
+        # ✅ Update sheet
         if st.button("✅ Mark All These Postcodes as Leafletted"):
-            data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
-            selected_postcodes = selected_in_poly["Postcode"].astype(str).str.strip().str.upper()
-
             updated_rows = 0
-
-            for postcode in selected_postcodes.unique():
-                matching_indices = data[data["Postcode"] == postcode].index
-                for idx in matching_indices:
+            for postcode in selected_in_poly["Postcode"].unique():
+                matches = area_data[area_data["Postcode"] == postcode].index
+                for idx in matches:
                     try:
                         sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
                         updated_rows += 1
                     except Exception as e:
-                        st.error(f"❌ Failed to update row {idx+2} for postcode {postcode}: {e}")
-
+                        st.error(f"Error updating {postcode}: {e}")
             if updated_rows > 0:
-                st.success(f"✅ Marked {updated_rows} rows as leafletted from selected area!")
-                data = load_data()
-                data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-                data["Roads"] = data["Roads"].astype(str).str.strip()
-                data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
-                render_map(data)
+                st.success(f"✅ Updated {updated_rows} rows in the Google Sheet!")
             else:
-                st.warning("⚠️ No matching postcodes found to update in the Google Sheet.")
+                st.warning("No matching postcodes found in sheet to update.")
     else:
-        st.error("Please select 4 unique postcodes to define the area.")
+        st.error("Please select 4 unique postcodes.")
+
+# --- Optional: You can still include your manual entry / stats / batch sections below ---
+
+
 
 # --- Data Entry Form ---
 st.header("✅ Report Leafletted Streets")
-st.subheader("1️⃣ Select Built Up Area first")
+# st.subheader("1️⃣ Select Built Up Area first")
 
-built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
+# built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
 
-st.subheader("2️⃣ Now select Streets, add Comment and Add to Batch")
+st.subheader("3️⃣ Now select Streets, add Comment and Add to Batch")
 
 filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
 
