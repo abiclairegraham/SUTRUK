@@ -49,6 +49,7 @@ def load_data():
 @st.cache_data(show_spinner=False)
 def load_polygons(geojson_path):
     gdf = gpd.read_file(geojson_path)
+    gdf["geometry"] = gdf["geometry"].simplify(tolerance=8, preserve_topology=True)
     gdf = gdf[~gdf["geometry"].isnull()]
     return gdf
 
@@ -109,7 +110,7 @@ if not gdf_filtered.empty:
                 "fillColor": color,
                 "color": color,
                 "weight": 1,
-                "fillOpacity": 0.5,
+                "fillOpacity": 0.05,
             },
             name="Postcodes",
             highlight_function=lambda x: {"weight": 3, "color": "blue"},
