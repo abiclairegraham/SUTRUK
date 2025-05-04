@@ -10,7 +10,7 @@ import geopandas as gpd
 from io import StringIO
 import json
 from shapely.geometry import Polygon, Point
-import numpy as np  # 🔹 NEW: used for polygon sorting
+import numpy as np
 
 # --- CONFIG ---
 st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
@@ -86,7 +86,6 @@ def render_map(data):
                 },
             ).add_to(m)
 
-        # Add a custom legend
         legend_html = '''
          <div style="position: fixed; 
                      bottom: 50px; left: 50px; width: 180px; height: 90px; 
@@ -108,12 +107,14 @@ if "batch" not in st.session_state:
 data = load_data()
 data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
 data["Roads"] = data["Roads"].astype(str).str.strip()
+data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
 render_map(data)
 
 # --- ZONE SELECTION BY POSTCODES ---
 st.header("📍 Select an Area by 4 Postcodes")
 
 gdf = load_polygons(sheet_info["geojson_path"])
+gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
 all_postcodes = sorted(gdf["Postcode"].unique())
 
 col1, col2, col3, col4 = st.columns(4)
@@ -147,7 +148,6 @@ if st.button("📦 Find Postcodes Inside Area"):
             m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
             folium.TileLayer("cartodbpositron").add_to(m)
 
-            # Draw polygon
             folium.Polygon(
                 locations=[(y, x) for x, y in corner_coords_sorted] + [(corner_coords_sorted[0][1], corner_coords_sorted[0][0])],
                 color="blue", fill=True, fill_opacity=0.1, weight=2
@@ -167,17 +167,31 @@ if st.button("📦 Find Postcodes Inside Area"):
 
             folium_static(m, width=900, height=600)
 
+        # ✅ Mark these postcodes as leafletted
         if st.button("✅ Mark All These Postcodes as Leafletted"):
-            for postcode in selected_in_poly["Postcode"].unique():
-                match_idxs = data[data["Postcode"] == postcode].index
-                for idx in match_idxs:
-                    sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
-            st.success("Marked selected postcodes as leafletted!")
+            data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
+            selected_postcodes = selected_in_poly["Postcode"].astype(str).str.strip().str.upper()
 
-            data = load_data()
-            data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-            data["Roads"] = data["Roads"].astype(str).str.strip()
-            render_map(data)
+            updated_rows = 0
+
+            for postcode in selected_postcodes.unique():
+                matching_indices = data[data["Postcode"] == postcode].index
+                for idx in matching_indices:
+                    try:
+                        sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
+                        updated_rows += 1
+                    except Exception as e:
+                        st.error(f"❌ Failed to update row {idx+2} for postcode {postcode}: {e}")
+
+            if updated_rows > 0:
+                st.success(f"✅ Marked {updated_rows} rows as leafletted from selected area!")
+                data = load_data()
+                data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
+                data["Roads"] = data["Roads"].astype(str).str.strip()
+                data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
+                render_map(data)
+            else:
+                st.warning("⚠️ No matching postcodes found to update in the Google Sheet.")
     else:
         st.error("Please select 4 unique postcodes to define the area.")
 
@@ -228,6 +242,7 @@ if st.session_state.batch:
         data = load_data()
         data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
         data["Roads"] = data["Roads"].astype(str).str.strip()
+        data["Postcode"] = data["Postcode"].astype(str).str.strip().str.upper()
         render_map(data)
 
 # --- STATS SECTION ---
