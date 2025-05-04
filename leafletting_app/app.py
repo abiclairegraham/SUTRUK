@@ -62,50 +62,29 @@ def filter_leafletted(gdf, data):
 # --- RENDER MAP ---
 def render_map(data):
     gdf = load_polygons(sheet_info["geojson_path"])
-
-    # Standardize postcodes
-    gdf["Postcode"] = gdf["Postcode"].astype(str).str.replace(" ", "").str.upper()
-    data["Postcode"] = data["Postcode"].astype(str).str.replace(" ", "").str.upper()
-
-    # Merge leaflet status into gdf
-    merged = gdf.merge(
-        data[["Postcode", "Leafletted?"]],
-        on="Postcode",
-        how="left"
-    )
-
-    merged["tooltip_label"] = merged.apply(
-        lambda row: f"{row['Postcode']} ({row['Leafletted?']})" if pd.notna(row["Leafletted?"]) else row["Postcode"],
-        axis=1
-    )
+    leafletted_gdf = filter_leafletted(gdf, data)
 
     with st.expander("🗺️ View Map of Leafletted Areas", expanded=True):
         m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
         folium.TileLayer("cartodbpositron").add_to(m)
 
-        for _, row in merged.iterrows():
+        for _, row in leafletted_gdf.iterrows():
             postcode = row["Postcode"]
-            status = row.get("Leafletted?", "")
-            fill_color = (
-                "green" if status == "✅"
-                else "orange" if status == "❓"
-                else "gray"
-            )
+            status = data[data["Postcode"] == postcode]["Leafletted?"].values[0]
+            fill_color = "green" if status == "✅" else "orange"
 
-            # Create GeoJson with embedded tooltip
-            gj = folium.GeoJson(
-                data=row["geometry"].__geo_interface__,
+            folium.GeoJson(
+                row["geometry"].__geo_interface__,
+                tooltip=f"{postcode} ({status})",
                 style_function=lambda x, color=fill_color: {
                     "fillColor": color,
                     "color": color,
                     "weight": 1,
                     "fillOpacity": 0.5,
                 },
-                tooltip=folium.Tooltip(row["tooltip_label"])
-            )
-            gj.add_to(m)
+            ).add_to(m)
 
-        # Legend
+        # Add a custom legend
         legend_html = '''
          <div style="position: fixed; 
                      bottom: 50px; left: 50px; width: 180px; height: 90px; 
@@ -114,12 +93,12 @@ def render_map(data):
          <b>Legend</b><br>
          <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
          <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
-         <i style="background:gray; width:10px; height:10px; display:inline-block;"></i> Not yet marked<br>
          </div> 
         '''
         m.get_root().html.add_child(folium.Element(legend_html))
+
         folium_static(m, width=900, height=600)
- 
+
 # --- MAIN FLOW ---
 if "batch" not in st.session_state:
     st.session_state.batch = []
