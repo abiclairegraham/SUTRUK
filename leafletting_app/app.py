@@ -65,7 +65,6 @@ area_data = data[data["Built Up Area"] == built_up_area].copy()
 # --- LOAD POLYGONS AND MERGE ---
 gdf = load_polygons(sheet_info["geojson_path"])
 gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
-
 merged = gdf.merge(area_data, on="Postcode", how="inner")
 
 # --- ZONE SELECTION BY POSTCODES ---
@@ -73,15 +72,17 @@ st.header("📍 Select an Area by 4 Postcodes in this Built Up Area")
 
 postcodes_in_area = sorted(merged["Postcode"].unique())
 
-col1, col2, col3, col4 = st.columns(4)
-corner1 = col1.selectbox("Corner 1", options=postcodes_in_area, key="corner1")
-corner2 = col2.selectbox("Corner 2", options=postcodes_in_area, key="corner2")
-corner3 = col3.selectbox("Corner 3", options=postcodes_in_area, key="corner3")
-corner4 = col4.selectbox("Corner 4", options=postcodes_in_area, key="corner4")
+with st.form("corner_selection_form"):
+    col1, col2, col3, col4 = st.columns(4)
+    corner1 = col1.selectbox("Corner 1", options=postcodes_in_area, key="corner1_form")
+    corner2 = col2.selectbox("Corner 2", options=postcodes_in_area, key="corner2_form")
+    corner3 = col3.selectbox("Corner 3", options=postcodes_in_area, key="corner3_form")
+    corner4 = col4.selectbox("Corner 4", options=postcodes_in_area, key="corner4_form")
+    submit_corners = st.form_submit_button("📦 Find Postcodes Inside Area")
 
 selected_corners = [corner1, corner2, corner3, corner4]
 
-if st.button("📦 Find Postcodes Inside Area"):
+if submit_corners:
     selected_geoms = merged[merged["Postcode"].isin(selected_corners)].geometry.centroid
 
     if len(selected_geoms) == 4:
@@ -97,8 +98,7 @@ if st.button("📦 Find Postcodes Inside Area"):
         poly = Polygon(corner_coords_sorted)
 
         selected_in_poly = merged[merged.geometry.centroid.within(poly)]
-
-        st.session_state.selected_in_poly = selected_in_poly  # ✅ Store for later use
+        st.session_state.selected_in_poly = selected_in_poly  # ✅ Persist for later
 
         st.success(f"Found {len(selected_in_poly)} postcode areas inside selected region!")
 
