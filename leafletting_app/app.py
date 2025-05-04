@@ -11,6 +11,9 @@ import numpy as np
 
 # --- CONFIG ---
 st.set_page_config(page_title="SUTRUK Leafletting Tracker", layout="wide")
+if "batch" not in st.session_state:
+    st.session_state.batch = []
+
 
 # --- COUNTY SELECTION ---
 st.title("📮 SUTRUK Leafletting Tracker")
