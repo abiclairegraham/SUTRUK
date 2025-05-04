@@ -1,3 +1,5 @@
+# WORKING - to do: implement polygon drawing on map to define area
+
 import streamlit as st
 import pandas as pd
 import folium
