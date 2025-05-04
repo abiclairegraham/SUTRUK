@@ -165,8 +165,7 @@ if not selected_df.empty:
         st.rerun()
 
 st.subheader("📊 Leafletting Summary")
-leafletted_rows = data[data["Leafletted?"]\
-isin(["✅", "❓"])]
+leafletted_rows = data[data["Leafletted?"].isin(["✅", "❓"])]
 
 if not leafletted_rows.empty:
     summary = leafletted_rows.groupby(["Built Up Area", "Roads"], dropna=True)["Households"].sum().reset_index()
