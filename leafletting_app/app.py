@@ -93,10 +93,10 @@ if st.session_state.render_map:
 
     st.subheader("🗺️ Interactive Map of Leafletted Areas")
     if not gdf_filtered.empty:
-        m = folium.Map(location=[
-            gdf_filtered.geometry.centroid.y.mean(),
-            gdf_filtered.geometry.centroid.x.mean()
-        ], zoom_start=13)
+        center_lat = gdf_filtered.geometry.centroid.y.mean()
+        center_lon = gdf_filtered.geometry.centroid.x.mean()
+
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
         folium.TileLayer("cartodbpositron").add_to(m)
 
         for _, row in gdf_filtered.iterrows():
@@ -133,7 +133,7 @@ if st.session_state.render_map:
         '''
         m.get_root().html.add_child(folium.Element(legend_html))
 
-        st_data = st_folium(m, width=900, height=600)
+        st_data = st_folium(m, width=900, height=600, disable_events=True)
 
         clicked = st_data.get("last_clicked", {})
         if clicked:
@@ -148,39 +148,6 @@ if st.session_state.render_map:
                 st.rerun()
     else:
         st.warning("Please select a Built Up Area above to view the map.")
-
-# --- STREET ENTRY FORM ---
-# st.subheader("2️⃣ Select Streets, Add Comment and Add to Batch")
-# filtered_streets = data_filtered["Roads"].dropna().unique()
-
-# with st.form("leafletting_form"):
-#     col1, col2 = st.columns(2)
-#     street = col1.selectbox("Street", options=sorted(filtered_streets) if len(filtered_streets) > 0 else ["No streets available"])
-#     comments = col2.text_area("Comments (optional)")
-#     add_to_batch = st.form_submit_button("➕ Add to Batch")
-#     if add_to_batch:
-#         st.session_state.batch.append({"Built Up Area": built_up_area, "Street": street, "Comments": comments})
-#         st.success(f"Added {street}, {built_up_area} to batch!")
-
-# if st.session_state.batch:
-#     st.subheader("📝 Streets Ready to Submit:")
-#     batch_df = pd.DataFrame(st.session_state.batch)
-#     st.dataframe(batch_df, use_container_width=True)
-
-#     if st.button("📤 Submit All Streets"):
-#         for entry in st.session_state.batch:
-#             bua = entry["Built Up Area"]
-#             street = entry["Street"]
-#             comments = entry["Comments"]
-#             matching_indices = data[(data["Built Up Area"] == bua) & (data["Roads"] == street)].index
-#             for idx in matching_indices:
-#                 sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
-#                 if comments:
-#                     sheet.update_cell(idx + 2, data.columns.get_loc("Comments") + 1, comments)
-#         st.success("✅ All streets submitted!")
-#         st.session_state.batch = []
-#         st.session_state.render_map = False
-#         st.rerun()
 
 selected_df = data_filtered[data_filtered["Postcode"].isin(st.session_state.selected_postcodes)]
 if not selected_df.empty:
@@ -198,7 +165,8 @@ if not selected_df.empty:
         st.rerun()
 
 st.subheader("📊 Leafletting Summary")
-leafletted_rows = data[data["Leafletted?"].isin(["✅", "❓"])]
+leafletted_rows = data[data["Leafletted?"]\
+isin(["✅", "❓"])]
 
 if not leafletted_rows.empty:
     summary = leafletted_rows.groupby(["Built Up Area", "Roads"], dropna=True)["Households"].sum().reset_index()
