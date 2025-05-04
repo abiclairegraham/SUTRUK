@@ -62,6 +62,42 @@ built_up_areas = sorted(data["Built Up Area"].dropna().unique())
 built_up_area = st.selectbox("2️⃣ Now select your Built Up Area:", built_up_areas)
 area_data = data[data["Built Up Area"] == built_up_area].copy()
 
+
+# --- SHOW MAP OF LEAFLETTED AREAS IN THIS BUILT-UP AREA ---
+with st.expander("🗺️ Leafletted Areas in This Built Up Area", expanded=True):
+    m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
+    folium.TileLayer("cartodbpositron").add_to(m)
+
+    leafletted = merged[merged["Leafletted?"].isin(["✅", "❓"])]
+
+    for _, row in leafletted.iterrows():
+        fill_color = "green" if row["Leafletted?"] == "✅" else "orange"
+        folium.GeoJson(
+            row["geometry"].__geo_interface__,
+            tooltip=f"{row['Postcode']} ({row['Leafletted?']})",
+            style_function=lambda x, color=fill_color: {
+                "fillColor": color,
+                "color": color,
+                "weight": 1,
+                "fillOpacity": 0.5,
+            },
+        ).add_to(m)
+
+    legend_html = '''
+        <div style="position: fixed; bottom: 50px; left: 50px; width: 180px; height: 90px;
+                    border:2px solid grey; z-index:9999; font-size:14px;
+                    background-color:white; padding: 10px;">
+        <b>Legend</b><br>
+        <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Leafletted<br>
+        <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
+        </div>
+    '''
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    folium_static(m, width=900, height=600)
+
+
+
 # --- LOAD POLYGONS AND MERGE ---
 gdf = load_polygons(sheet_info["geojson_path"])
 gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
