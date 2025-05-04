@@ -22,14 +22,12 @@ SHEET_CONFIG = {
     "Cambridgeshire": {
         "sheet_id": "1NoyMBvPgRx8_m4fJ7Mw6JrPo7R8pZMmOzbJ0fv3DFiU",
         "sheet_name": "cambs_wards_street_CEDs_pc_simplified",
-        "geojson_path": "leafletting_app/data/cambs_pc_polygons.geojson",
-        "map_center": [52.2, 0.12]
+        "geojson_path": "leafletting_app/data/cambs_pc_polygons.geojson"
     },
     "Hertfordshire": {
         "sheet_id": "1uIBFgGBVBozTM0mI4OriSlWdX3-r0HXbfqDwaUXMj9Q",
         "sheet_name": "herts_wards_street_CEDs_pc_simplified",
-        "geojson_path": "leafletting_app/data/herts_pc_polygons.geojson",
-        "map_center": [51.8, -0.2]
+        "geojson_path": "leafletting_app/data/herts_pc_polygons.geojson"
     }
 }
 
@@ -54,33 +52,38 @@ def load_polygons(geojson_path):
     gdf = gdf[~gdf["geometry"].isnull()]
     return gdf
 
-# --- FILTER POLYGONS BY LEAFLETTED ---
-def filter_leafletted(gdf, data):
-    marked_postcodes = data[data["Leafletted?"].isin(["✅", "❓"])] ["Postcode"].unique()
-    return gdf[gdf["Postcode"].isin(marked_postcodes)]
-
 # --- INITIALIZE SESSION STATE ---
 if "batch" not in st.session_state:
     st.session_state.batch = []
 if "selected_postcodes" not in st.session_state:
     st.session_state.selected_postcodes = set()
 
-# --- MAIN FLOW ---
+# --- LOAD DATA ---
 data = load_data()
 data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
 data["Roads"] = data["Roads"].astype(str).str.strip()
+data["Postcode"] = data["Postcode"].astype(str).str.replace(" ", "").str.upper()
 
+# --- USER SELECTS BUILT UP AREA ---
+st.header("✅ Report Leafletted Streets")
+st.subheader("1️⃣ Select Built Up Area")
+built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
+data_filtered = data[data["Built Up Area"] == built_up_area]
+
+# --- LOAD POLYGONS and JOIN WITH FILTERED POSTCODES ---
 gdf = load_polygons(sheet_info["geojson_path"])
-leafletted_gdf = filter_leafletted(gdf, data)
+gdf["Postcode"] = gdf["Postcode"].astype(str).str.replace(" ", "").str.upper()
+postcodes = data_filtered["Postcode"].unique()
+gdf_filtered = gdf[gdf["Postcode"].isin(postcodes)]
 
-# --- MAP RENDERING WITH CLICKABLE POLYGONS ---
+# --- MAP RENDERING ---
 st.subheader("🗺️ Interactive Map of Leafletted Areas")
-m = folium.Map(location=sheet_info["map_center"], zoom_start=12)
+m = folium.Map(location=[gdf_filtered.geometry.centroid.y.mean(), gdf_filtered.geometry.centroid.x.mean()], zoom_start=13)
 folium.TileLayer("cartodbpositron").add_to(m)
 
-for _, row in gdf.iterrows():
+for _, row in gdf_filtered.iterrows():
     postcode = row["Postcode"]
-    status = data[data["Postcode"] == postcode]["Leafletted?"].values
+    status = data_filtered[data_filtered["Postcode"] == postcode]["Leafletted?"].values
     if len(status) > 0:
         status = status[0]
     else:
@@ -106,7 +109,7 @@ for _, row in gdf.iterrows():
         },
         name="Postcodes",
         highlight_function=lambda x: {"weight": 3, "color": "blue"},
-        ).add_to(m)
+    ).add_to(m)
 
 # Legend
 legend_html = '''
@@ -128,7 +131,7 @@ st_data = st_folium(m, width=900, height=600)
 clicked = st_data.get("last_clicked", {})
 if clicked:
     point = gpd.GeoSeries([gpd.points_from_xy([clicked["lng"]], [clicked["lat"]])[0]], crs="EPSG:4326")
-    matches = gdf[gdf.geometry.contains(point[0])]
+    matches = gdf_filtered[gdf_filtered.geometry.contains(point[0])]
     if not matches.empty:
         clicked_pc = matches.iloc[0]["Postcode"]
         if clicked_pc in st.session_state.selected_postcodes:
@@ -137,15 +140,9 @@ if clicked:
             st.session_state.selected_postcodes.add(clicked_pc)
         st.rerun()
 
-# --- Data Entry Form ---
-st.header("✅ Report Leafletted Streets")
-st.subheader("1️⃣ Select Built Up Area first")
-
-built_up_area = st.selectbox("Built Up Area", options=sorted(data["Built Up Area"].dropna().unique()))
-
-st.subheader("2️⃣ Now select Streets, add Comment and Add to Batch")
-
-filtered_streets = data[data["Built Up Area"] == built_up_area]["Roads"].dropna().unique()
+# --- STREET ENTRY FORM ---
+st.subheader("2️⃣ Select Streets, Add Comment and Add to Batch")
+filtered_streets = data_filtered["Roads"].dropna().unique()
 
 with st.form("leafletting_form"):
     col1, col2 = st.columns(2)
@@ -167,11 +164,11 @@ if st.session_state.batch:
 
     if st.button("📤 Submit All Streets"):
         for entry in st.session_state.batch:
-            built_up_area = entry["Built Up Area"]
+            bua = entry["Built Up Area"]
             street = entry["Street"]
             comments = entry["Comments"]
 
-            matching_indices = data[(data["Built Up Area"] == built_up_area) & (data["Roads"] == street)].index
+            matching_indices = data[(data["Built Up Area"] == bua) & (data["Roads"] == street)].index
 
             for idx in matching_indices:
                 sheet.update_cell(idx + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
@@ -180,26 +177,22 @@ if st.session_state.batch:
 
         st.success("✅ All streets submitted!")
         st.session_state.batch = []
-        data = load_data()
-        data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-        data["Roads"] = data["Roads"].astype(str).str.strip()
+        st.rerun()
 
 # --- Show Clicked Postcode Submissions ---
-selected_df = data[data["Postcode"].isin(st.session_state.selected_postcodes)]
+selected_df = data_filtered[data_filtered["Postcode"].isin(st.session_state.selected_postcodes)]
 if not selected_df.empty:
     st.subheader("📍 Postcodes Selected from Map")
     st.dataframe(selected_df[["Roads", "Postcode", "Built Up Area", "Households"]])
 
     if st.button("📤 Submit Selected Postcodes"):
         for _, row in selected_df.iterrows():
-            idx = data[data["Postcode"] == row["Postcode"]].index
+            idx = data[(data["Postcode"] == row["Postcode"])].index
             for i in idx:
                 sheet.update_cell(i + 2, data.columns.get_loc("Leafletted?") + 1, "✅")
         st.success("✅ Postcodes submitted!")
         st.session_state.selected_postcodes.clear()
-        data = load_data()
-        data["Built Up Area"] = data["Built Up Area"].astype(str).str.strip()
-        data["Roads"] = data["Roads"].astype(str).str.strip()
+        st.rerun()
 
 # --- STATS SECTION ---
 st.subheader("📊 Leafletting Summary")
