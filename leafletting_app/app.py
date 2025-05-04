@@ -78,67 +78,71 @@ gdf_filtered = gdf[gdf["Postcode"].isin(postcodes)]
 
 # --- MAP RENDERING ---
 st.subheader("🗺️ Interactive Map of Leafletted Areas")
-m = folium.Map(location=[gdf_filtered.geometry.centroid.y.mean(), gdf_filtered.geometry.centroid.x.mean()], zoom_start=13)
-folium.TileLayer("cartodbpositron").add_to(m)
+if not gdf_filtered.empty:
+    m = folium.Map(location=[
+        gdf_filtered.geometry.centroid.y.mean(),
+        gdf_filtered.geometry.centroid.x.mean()
+    ], zoom_start=13)
+    folium.TileLayer("cartodbpositron").add_to(m)
 
-for _, row in gdf_filtered.iterrows():
-    postcode = row["Postcode"]
-    status = data_filtered[data_filtered["Postcode"] == postcode]["Leafletted?"].values
-    if len(status) > 0:
-        status = status[0]
-    else:
-        status = ""
-
-    if postcode in st.session_state.selected_postcodes:
-        fill_color = "blue"
-    elif status == "✅":
-        fill_color = "green"
-    elif status == "❓":
-        fill_color = "orange"
-    else:
-        fill_color = "gray"
-
-    folium.GeoJson(
-        row["geometry"].__geo_interface__,
-        tooltip=f"{postcode} ({status})",
-        style_function=lambda x, color=fill_color: {
-            "fillColor": color,
-            "color": color,
-            "weight": 1,
-            "fillOpacity": 0.5,
-        },
-        name="Postcodes",
-        highlight_function=lambda x: {"weight": 3, "color": "blue"},
-    ).add_to(m)
-
-# Legend
-legend_html = '''
- <div style="position: fixed; 
-             bottom: 50px; left: 50px; width: 200px; height: 120px; 
-             border:2px solid grey; z-index:9999; font-size:14px;
-             background-color:white; padding: 10px;">
- <b>Legend</b><br>
- <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
- <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
- <i style="background:blue; width:10px; height:10px; display:inline-block;"></i> Selected<br>
- </div> 
-'''
-m.get_root().html.add_child(folium.Element(legend_html))
-
-st_data = st_folium(m, width=900, height=600)
-
-# Handle clicks
-clicked = st_data.get("last_clicked", {})
-if clicked:
-    point = gpd.GeoSeries([gpd.points_from_xy([clicked["lng"]], [clicked["lat"]])[0]], crs="EPSG:4326")
-    matches = gdf_filtered[gdf_filtered.geometry.contains(point[0])]
-    if not matches.empty:
-        clicked_pc = matches.iloc[0]["Postcode"]
-        if clicked_pc in st.session_state.selected_postcodes:
-            st.session_state.selected_postcodes.remove(clicked_pc)
+    for _, row in gdf_filtered.iterrows():
+        postcode = row["Postcode"]
+        status = data_filtered[data_filtered["Postcode"] == postcode]["Leafletted?"].values
+        if len(status) > 0:
+            status = status[0]
         else:
-            st.session_state.selected_postcodes.add(clicked_pc)
-        st.rerun()
+            status = ""
+
+        if postcode in st.session_state.selected_postcodes:
+            fill_color = "blue"
+        elif status == "✅":
+            fill_color = "green"
+        elif status == "❓":
+            fill_color = "orange"
+        else:
+            fill_color = "gray"
+
+        folium.GeoJson(
+            row["geometry"].__geo_interface__,
+            tooltip=f"{postcode} ({status})",
+            style_function=lambda x, color=fill_color: {
+                "fillColor": color,
+                "color": color,
+                "weight": 1,
+                "fillOpacity": 0.5,
+            },
+            name="Postcodes",
+            highlight_function=lambda x: {"weight": 3, "color": "blue"},
+        ).add_to(m)
+
+    legend_html = '''
+     <div style="position: fixed; 
+                 bottom: 50px; left: 50px; width: 200px; height: 120px; 
+                 border:2px solid grey; z-index:9999; font-size:14px;
+                 background-color:white; padding: 10px;">
+     <b>Legend</b><br>
+     <i style="background:green; width:10px; height:10px; display:inline-block;"></i> ✅ Definitely leafletted<br>
+     <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> ❓ Possibly leafletted<br>
+     <i style="background:blue; width:10px; height:10px; display:inline-block;"></i> Selected<br>
+     </div> 
+    '''
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    st_data = st_folium(m, width=900, height=600)
+
+    clicked = st_data.get("last_clicked", {})
+    if clicked:
+        point = gpd.GeoSeries([gpd.points_from_xy([clicked["lng"]], [clicked["lat"]])[0]], crs="EPSG:4326")
+        matches = gdf_filtered[gdf_filtered.geometry.contains(point[0])]
+        if not matches.empty:
+            clicked_pc = matches.iloc[0]["Postcode"]
+            if clicked_pc in st.session_state.selected_postcodes:
+                st.session_state.selected_postcodes.remove(clicked_pc)
+            else:
+                st.session_state.selected_postcodes.add(clicked_pc)
+            st.rerun()
+else:
+    st.warning("Please select a Built Up Area above to view the map.")
 
 # --- STREET ENTRY FORM ---
 st.subheader("2️⃣ Select Streets, Add Comment and Add to Batch")
@@ -156,7 +160,6 @@ with st.form("leafletting_form"):
         st.session_state.batch.append({"Built Up Area": built_up_area, "Street": street, "Comments": comments})
         st.success(f"Added {street}, {built_up_area} to batch!")
 
-# --- Show Batch Table ---
 if st.session_state.batch:
     st.subheader("📝 Streets Ready to Submit:")
     batch_df = pd.DataFrame(st.session_state.batch)
@@ -179,7 +182,6 @@ if st.session_state.batch:
         st.session_state.batch = []
         st.rerun()
 
-# --- Show Clicked Postcode Submissions ---
 selected_df = data_filtered[data_filtered["Postcode"].isin(st.session_state.selected_postcodes)]
 if not selected_df.empty:
     st.subheader("📍 Postcodes Selected from Map")
@@ -194,7 +196,6 @@ if not selected_df.empty:
         st.session_state.selected_postcodes.clear()
         st.rerun()
 
-# --- STATS SECTION ---
 st.subheader("📊 Leafletting Summary")
 leafletted_rows = data[data["Leafletted?"].isin(["✅", "❓"])]
 
