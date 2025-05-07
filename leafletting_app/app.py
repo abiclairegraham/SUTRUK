@@ -67,7 +67,7 @@ area_data = data[data["Built Up Area"] == built_up_area].copy()
 # --- LOAD POLYGONS AND MERGE ---
 gdf = load_polygons(sheet_info["geojson_path"])
 gdf["Postcode"] = gdf["Postcode"].astype(str).str.strip().str.upper()
-merged = gdf.merge(area_data, on="Postcode", how="inner").drop_duplicates()
+merged = gdf.merge(area_data, on="Postcode", how="inner").drop_duplicates(subset=["Postcode"])
 
 # --- SHOW MAP OF LEAFLETTED AREAS IN THIS BUILT-UP AREA ---
 with st.expander("🗺️ Leafletted Areas in This Built Up Area", expanded=True):
