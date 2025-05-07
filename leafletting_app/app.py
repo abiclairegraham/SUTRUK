@@ -161,7 +161,7 @@ if submit_corners:
 
             folium_static(m, width=900, height=600)
     else:
-        st.error("Please select 4 unique postcodes.")
+        st.error(f"Please select 4 unique postcodes, {len(selected_geoms)} found")
 
 # --- Show matching street preview and update button ---
 if "selected_in_poly" in st.session_state:
